@@ -1,0 +1,9 @@
+/app/vendors/ffmpeg/
+venv/
+.venv/
+__pycache__/
+*.pyc
+.idea/
+*.log
+*.tmp
+styles.ssq

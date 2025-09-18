@@ -1,0 +1,234 @@
+# --- Drag & Drop ---
+    def _drag_enter(self, event):
+        if event.mimeData().hasUrls():
+            event.acceptProposedAction()
+
+    def _drop(self, event):
+        for url in event.mimeData().urls():
+            if url.isLocalFile() and url.toLocalFile().lower().endswith(".srt"):
+                self._add_file_if_not_exists(url.toLocalFile())
+
+    # --- Preprocesado ---
+    def _clean_line(self, line: str) -> str:
+        return re.sub(r"<[^>]+>", "", line).strip()
+
+    # --- Crear traductor ---
+    def _make_translator(self, src, dst):
+        libre = None
+        try:
+            libre = LibreTranslateTranslator()
+        except Exception:
+            libre = None
+
+        google_free = GoogleFreeTranslator()
+        my_memory = MyMemoryTranslator()
+
+        prov_key = self.cmb_provider.currentData()
+        if prov_key == "google_free":
+            providers = [google_free, my_memory]
+            if libre:
+                providers.append(libre)
+        elif prov_key == "libre_translate" and libre:
+            providers = [libre, google_free, my_memory]
+        elif prov_key == "my_memory":
+            providers = [my_memory, google_free]
+            if libre:
+                providers.append(libre)
+        else:
+            providers = [google_free, my_memory]
+            if libre:
+                providers.append(libre)
+
+        return RouterTranslator(providers)
+
+    def detect_language_from_entries(self, entries):
+        cleaned = [self._clean_line(e.original) for e in entries if e.original.strip()]
+        sample = cleaned[:20]
+        langs = []
+        for line in sample:
+            try:
+                langs.append(detect(line))
+            except:
+                pass
+        if not langs:
+            return DEFAULT_LANG
+        most_common, _ = Counter(langs).most_common(1)[0]
+        if most_common not in ALLOWED_LANGS:
+            most_common = DEFAULT_LANG
+        return most_common
+
+    # --- Iniciar traducción ---
+    def _start(self):
+        if self.list.count() == 0:
+            QMessageBox.warning(self, "⚠", self.tr("No hay archivos para traducir"))
+            return
+
+        self.completed_tasks = 0  # Reiniciar contador
+        self.processing_started.emit()  # Bloquear menú en MainWindow
+
+        # Bloquear todo menos Cancelar
+        for w in self._controls_to_lock:
+            w.setEnabled(False)
+        self.btn_cancel.setEnabled(True)
+        self.is_running = True
+
+        # Calcular total de líneas
+        self.total_lines = 0
+        self.done_lines = 0
+        self.file_line_counts = {}
+        for i in range(self.list.count()):
+            path = self.list.item(i).data(Qt.UserRole)
+            entries = load_srt(path)
+            self.file_line_counts[path] = len(entries)
+            self.total_lines += len(entries)
+
+        self.progress_global.setMaximum(self.total_lines)
+        self.progress_global.setValue(0)
+
+        # Idiomas
+        src = self.cmb_src.currentData()
+        dst = self.cmb_dst.currentData()
+
+        # Auto-detección robusta
+        if src == "auto":
+            first_file = self.list.item(0).data(Qt.UserRole)
+            entries = load_srt(first_file)
+            src = self.detect_language_from_entries(entries)
+
+        # Si origen y destino son iguales, forzar cambio
+        if src == dst:
+            dst = "en" if src != "en" else "es"
+
+        # Guardar configuración
+        S = get_settings()
+        S.config["last_src_lang"] = src
+        S.config["last_dst_lang"] = dst
+        S.save()
+
+        translator = self._make_translator(src, dst)
+
+        self.tasks.clear()
+        for i in range(self.list.count()):
+            path = self.list.item(i).data(Qt.UserRole)
+            out = str(Path(path).with_name(Path(path).stem + f".{dst}.srt"))
+            task = TranslateTask(path, translator, src, dst, out, preprocess_fn=self._clean_line)
+            task.signals.analyzing_progress.connect(self._on_analyzing_progress)
+            task.signals.progress.connect(self._on_progress)
+            task.signals.finished.connect(self._on_finished)
+            task.signals.error.connect(self._on_error)
+            task.signals.translator_used.connect(self._on_translator_used)
+            self.tasks[path] = task
+            self.pool.start(task)
+
+        self.lbl_status.setText(self.t("analyzing_files").format(count=len(self.tasks)))
+
+    # --- Progreso, traductor usado, finalización y errores ---
+    def _on_progress(self, file, done, total):
+        if file in self.file_progress:
+            self.file_progress[file].setValue(int((done / total) * 100))
+        # Calcular progreso global
+        global_done = sum(
+            int((self.file_progress[f].value() / 100) * self.file_line_counts.get(f, 0))
+            for f in self.file_progress
+        )
+        self.progress_global.setValue(global_done)
+        # 🔹 Forzar actualización visual inmediata
+        QApplication.processEvents()
+    def _on_analyzing_progress(self, file, done, total):
+        self.lbl_status.setText(self.t("analyzing_files").format(count=len(self.tasks)))
+        if file in self.file_progress:
+            self.file_progress[file].setValue(int((done / total) * 100))
+        QApplication.processEvents()
+
+    def _on_translator_used(self, file, provider_name):
+        self.lbl_status.setText(
+            self.tr(f"Traduciendo {Path(file).name} con {provider_name}")
+        )
+
+    def _on_finished(self, file, out_path):
+        self.lbl_status.setText(self.t("file_completed").format(filename=Path(file).name))
+        self.completed_tasks += 1
+
+        if self.completed_tasks == len(self.tasks):
+            # Mostrar métricas
+            summary = []
+            for t in self.tasks.values():
+                for name, data in t.stats.items():
+                    summary.append(
+                        f"{name}: {data['count']} líneas, {data['errors']} errores, {data['time']:.2f}s"
+                    )
+            if summary:
+                QMessageBox.information(
+                    self,
+                    self.t("translation_summary"),
+                    "\n".join(summary)
+                )
+            self._end_session()
+
+    def _on_error(self, file, message):
+        QMessageBox.critical(self, "❌", f"{self.t('error_in_file')}: {file}\n{message}")
+        self.completed_tasks += 1
+        if self.completed_tasks == len(self.tasks):
+            self._end_session()
+
+    def _cancel_all(self):
+        for t in self.tasks.values():
+            try:
+                t.cancel()
+            except Exception:
+                pass
+        self.tasks.clear()
+        self.lbl_status.setText(self.t("process_stopped"))
+        self._end_session()
+
+    def _end_session(self):
+        for w in self._controls_to_lock:
+            w.setEnabled(True)
+        self.btn_cancel.setEnabled(False)
+        self.is_running = False
+        self.lbl_status.setText(self.t("translation_completed"))
+        self.processing_finished.emit()  # Desbloquear menú en MainWindow
+
+    # --- Retraducción UI ---
+    def retranslate_ui(self):
+        self.t = get_translator()
+        self.btn_add.setText(self.t("add_subtitles"))
+        self.btn_start.setText(self.t("start"))
+        self.btn_cancel.setText(self.t("cancel"))
+        self.btn_add.setToolTip(self.t("add_subtitles"))
+        self.btn_start.setToolTip(self.t("translate_subtitles"))
+        self.btn_cancel.setToolTip(self.t("process_stopped"))
+        self.info_text_label.setText(self.t("videos_drag_hint"))
+
+        # 🔹 Actualizar lbl_status según estado real
+        if self.is_running and self.tasks:
+            self.lbl_status.setText(self.t("analyzing_files").format(count=len(self.tasks)))
+        else:
+            self.lbl_status.setText(self.t("ready_to_start"))
+
+        # 🔹 Actualizar labels de idioma y proveedor
+        self.label_src.setText(self.t("source_lang"))
+        self.label_dst.setText(self.t("target_lang"))
+        self.label_provider.setText(self.t("translate_subtitles"))
+
+        # 🔹 Reconstruir combos con traducciones actualizadas
+        src_code = self.cmb_src.currentData()
+        dst_code = self.cmb_dst.currentData()
+
+        self.cmb_src.clear()
+        self.cmb_dst.clear()
+        self.cmb_src.addItem(self.t("auto_detect"), "auto")
+        for code in ALLOWED_LANGS:
+            nombre = {
+                "en": self.t("english"),
+                "es": self.t("spanish"),
+                "fr": self.t("french"),
+            }.get(code, code)
+            self.cmb_src.addItem(nombre, code)
+            self.cmb_dst.addItem(nombre, code)
+
+        # Restaurar selección previa
+        idx_src = max(0, self.cmb_src.findData(src_code))
+        idx_dst = max(0, self.cmb_dst.findData(dst_code))
+        self.cmb_src.setCurrentIndex(idx_src)
+        self.cmb_dst.setCurrentIndex(idx_dst)

@@ -1,0 +1,261 @@
+from PySide6.QtWidgets import (
+    QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QListWidget, QListWidgetItem,
+    QProgressBar, QLabel, QFileDialog, QMessageBox, QMenu, QComboBox, QApplication
+)
+from PySide6.QtGui import QIcon
+from PySide6.QtCore import Qt, QThreadPool, QPoint, QSize
+from pathlib import Path
+import re
+
+from app.services.i18n import get_translator
+from app.services.settings import get_settings
+from app.core.subtitles import load_srt
+from app.gui.file_item_widget import FileItemWidget
+from app.core.translators import GoogleFreeTranslator, MyMemoryTranslator, LibreTranslateTranslator, RouterTranslator
+from app.gui.workers_translate import TranslateTask
+from collections import Counter
+from langdetect import detect
+from PySide6.QtCore import Signal
+from app.services.config import ALLOWED_LANGS, DEFAULT_LANG
+from app.gui.drop_widgets import DropListWidget
+
+class TranslateWidget(QWidget):
+    processing_started = Signal()
+    processing_finished = Signal()
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.t = get_translator()
+        self.icon_path = Path("app/assets/icons")
+        self.pool = QThreadPool.globalInstance()
+
+        self.is_running = False
+        self.file_progress = {}
+        self.tasks = {}
+        self.completed_tasks = 0  # Contador de tareas finalizadas
+        self.total_lines = 0
+        self.done_lines = 0
+        self.file_line_counts = {}
+        self._controls_to_lock = []
+
+        self._build_ui()
+
+    # --- Dentro de TranslateWidget ---
+    def _build_ui(self):
+        layout = QVBoxLayout(self)
+
+        # --- Lista con soporte de arrastrar archivos ---
+        self.list = DropListWidget(self)
+        layout.addWidget(self.list)
+
+        # --- Combos de idioma y proveedor ---
+        self.cmb_src = QComboBox()
+        self.cmb_dst = QComboBox()
+        self.cmb_provider = QComboBox()
+
+        for cmb in (self.cmb_src, self.cmb_dst, self.cmb_provider):
+            cmb.setSizeAdjustPolicy(QComboBox.AdjustToContents)
+
+            # --- Botones principales ---
+            btn_row = QHBoxLayout()
+
+            btn_style = """
+                QPushButton {
+                    padding: 8px;
+                    text-align: left;
+                    font-size: 14px;
+                    border: 1px solid #444;
+                    border-radius: 6px;
+                }
+                QPushButton:hover {
+                    background-color: rgba(30, 136, 229, 0.15);
+                }
+            """
+
+        # Botón Añadir SRTs
+        self.btn_add = QPushButton(QIcon(str(self.icon_path / "add.svg")), self.t("add_subtitles"))
+        self.btn_add.setStyleSheet(btn_style)
+        self.btn_add.setIconSize(QSize(20, 20))
+
+        # Botón Iniciar
+        self.btn_start = QPushButton(QIcon(str(self.icon_path / "start.svg")), self.t("start"))
+        self.btn_start.setStyleSheet(btn_style)
+        self.btn_start.setIconSize(QSize(20, 20))
+
+        # Botón Cancelar
+        self.btn_cancel = QPushButton(QIcon(str(self.icon_path / "stop.svg")), self.t("cancel"))
+        self.btn_cancel.setStyleSheet(btn_style)
+        self.btn_cancel.setIconSize(QSize(20, 20))
+        self.btn_cancel.setEnabled(False)
+
+        # Añadir a la fila
+        btn_row.addWidget(self.btn_add)
+        btn_row.addWidget(self.btn_start)
+        btn_row.addWidget(self.btn_cancel)
+        btn_row.addStretch()
+        layout.addLayout(btn_row)
+
+        # 🔹 Forzar altura mínima igual para todos
+        altura = 36
+        for b in (self.btn_add, self.btn_start, self.btn_cancel):
+            b.setMinimumHeight(altura)
+
+        # 🔹 Forzar altura mínima igual para todos
+        altura = 36  # ajusta si quieres más alto
+        for b in (self.btn_add, self.btn_start, self.btn_cancel):
+            b.setMinimumHeight(altura)
+
+        # Idiomas y proveedor
+        config_row = QHBoxLayout()
+        self.cmb_provider = QComboBox()
+        self.cmb_provider.addItem(self.t("google_free"), "google_free")
+        self.cmb_provider.addItem(self.t("my_memory"), "my_memory")
+        self.cmb_provider.addItem(self.t("libre_translate"), "libre_translate")
+
+        self.cmb_src = QComboBox()
+        self.cmb_dst = QComboBox()
+
+        # Rellenar combos dinámicamente
+        self.cmb_src.addItem(self.t("auto_detect"), "auto")
+        for code in ALLOWED_LANGS:
+            nombre = {
+                "en": self.t("english"),
+                "es": self.t("spanish"),
+                "fr": self.t("french"),
+                # añade más si amplías ALLOWED_LANGS
+            }.get(code, code)
+            self.cmb_src.addItem(nombre, code)
+            self.cmb_dst.addItem(nombre, code)
+
+        S = get_settings()
+        last_src = S.config.get("last_src_lang", "auto")
+        last_dst = S.config.get("last_dst_lang", "es")
+        idx_src = max(0, self.cmb_src.findData(last_src))
+        idx_dst = max(0, self.cmb_dst.findData(last_dst))
+        self.cmb_src.setCurrentIndex(idx_src)
+        self.cmb_dst.setCurrentIndex(idx_dst)
+
+        self.label_src = QLabel(self.t("source_lang"))
+        config_row.addWidget(self.label_src)
+        config_row.addWidget(self.cmb_src)
+
+        config_row.addSpacing(12)
+
+        self.label_dst = QLabel(self.t("target_lang"))
+        config_row.addWidget(self.label_dst)
+        config_row.addWidget(self.cmb_dst)
+
+        config_row.addSpacing(12)
+
+        self.label_provider = QLabel(self.t("translate_subtitles"))
+        config_row.addWidget(self.label_provider)
+        config_row.addWidget(self.cmb_provider)
+
+        config_row.addStretch()
+        layout.addLayout(config_row)
+
+        # Mensaje arrastrar
+        info_row = QHBoxLayout()
+        self.info_icon_label = QLabel()
+        self.info_icon_label.setPixmap(QIcon(str(self.icon_path / "idea.svg")).pixmap(20, 20))
+        self.info_text_label = QLabel(self.t("videos_drag_hint"))
+        info_row.addWidget(self.info_icon_label)
+        info_row.addWidget(self.info_text_label)
+        info_row.addStretch()
+        layout.addLayout(info_row)
+
+        # Lista de archivos
+        self.list = QListWidget()
+        self.list.setAcceptDrops(True)
+        self.list.setSelectionMode(QListWidget.MultiSelection)
+        self.list.dragEnterEvent = self._drag_enter
+        self.list.dropEvent = self._drop
+        self.list.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.list.customContextMenuRequested.connect(self._show_context_menu)
+        layout.addWidget(self.list)
+
+        # --- Barra de progreso global ---
+        self.progress_global = QProgressBar()
+        self.progress_global.setTextVisible(True)
+        self.progress_global.setMaximum(100)
+        self.progress_global.setValue(0)
+        layout.addWidget(self.progress_global)
+
+        # Estado
+        self.lbl_status = QLabel(self.t("ready_to_start"))
+        layout.addWidget(self.lbl_status)
+
+        self._controls_to_lock = [
+            self.btn_add, self.btn_start,
+            self.cmb_provider, self.cmb_src, self.cmb_dst,
+            self.list
+        ]
+
+        self.btn_add.clicked.connect(self._add_files)
+        self.btn_start.clicked.connect(self._start)
+        self.btn_cancel.clicked.connect(self._cancel_all)
+
+        self.setLayout(layout)
+
+    # --- Menú contextual ---
+    def _show_context_menu(self, pos: QPoint):
+        menu = QMenu(self)
+        act_add = menu.addAction(self.t("add_input_files"))
+        act_select_all = menu.addAction(self.tr("Seleccionar todos"))
+        act_remove_selected = menu.addAction(self.tr("Eliminar seleccionados"))
+        act_remove_all = menu.addAction(self.t("remove_all"))
+        menu.addSeparator()
+        act_open_file = menu.addAction(self.t("open_selected_file"))
+        act_open_folder = menu.addAction(self.t("open_selected_file_folder"))
+
+        action = menu.exec(self.list.mapToGlobal(pos))
+        if action == act_add:
+            self._add_files()
+        elif action == act_select_all:
+            for i in range(self.list.count()):
+                self.list.item(i).setSelected(True)
+        elif action == act_remove_selected:
+            self._remove_selected_items()
+        elif action == act_remove_all:
+            self._remove_all_items()
+        elif action == act_open_file:
+            self._open_selected_file()
+        elif action == act_open_folder:
+            self._open_selected_file_folder()
+
+    def _remove_selected_items(self):
+        for item in self.list.selectedItems():
+            path = item.data(Qt.UserRole)
+            row = self.list.row(item)
+            self.list.takeItem(row)
+            if path in self.file_progress:
+                del self.file_progress[path]
+
+    def _remove_all_items(self):
+        self.list.clear()
+        self.file_progress.clear()
+
+    # --- Añadir archivos ---
+    def _add_files(self):
+        S = get_settings()
+        last_dir = S.config.get("last_srt_dir", "")
+        files, _ = QFileDialog.getOpenFileNames(
+            self, self.t("add_subtitles"), last_dir, "SubRip (*.srt)"
+        )
+        if files:
+            S.config["last_srt_dir"] = str(Path(files[0]).parent)
+            S.config["last_src_lang"] = self.cmb_src.currentData()
+            S.config["last_dst_lang"] = self.cmb_dst.currentData()
+            S.save()
+            for f in files:
+                self._add_file_if_not_exists(f)
+
+    def _add_file_if_not_exists(self, path):
+        if not any(self.list.item(i).data(Qt.UserRole) == path for i in range(self.list.count())):
+            item = QListWidgetItem()
+            widget = FileItemWidget(path)
+            item.setSizeHint(widget.sizeHint())
+            item.setData(Qt.UserRole, path)
+            self.list.addItem(item)
+            self.list.setItemWidget(item, widget)
+            self.file_progress[path] = widget.progress
