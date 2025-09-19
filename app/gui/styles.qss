@@ -1,0 +1,129 @@
+QMainWindow {
+    background-color: #121217; /* Fondo oscuro */
+    color: #eaeaea;            /* Texto claro */
+}
+
+QPushButton {
+    padding: 8px 12px;
+    background: #2b2e3b;       /* Fondo gris azulado */
+    color: #eaeaea;            /* Texto claro */
+    border-radius: 6px;        /* Bordes redondeados */
+}
+
+QPushButton:hover {
+    background: #3a3e4f;       /* Fondo más claro al pasar el ratón */
+}
+
+QProgressBar {
+    border: 1px solid #3a3e4f;
+    text-align: center;
+    color: #eaeaea;
+}
+/* Estilo especial para los botones principales */
+QPushButton#PrimaryButton {
+    background-color: #2d89ef;
+    color: white;
+    font-weight: bold;
+    padding: 8px 14px;
+    border-radius: 6px;
+    border: none;
+}
+
+QPushButton#PrimaryButton:hover {
+    background-color: #1e5cb3;
+}
+
+QPushButton#PrimaryButton:pressed {
+    background-color: #16427a;
+}
+
+QPushButton#DangerButton {
+    background-color: #d9534f;
+    color: white;
+    font-weight: bold;
+    padding: 8px 14px;
+    border-radius: 6px;
+    border: none;
+}
+
+QPushButton#DangerButton:hover {
+    background-color: #c9302c;
+}
+
+QPushButton#DangerButton:pressed {
+    background-color: #ac2925;
+}
+
+/* GroupBox para secciones */
+QGroupBox {
+    border: 1px solid #3a3e4f;
+    border-radius: 6px;
+    margin-top: 10px;
+    padding: 8px;
+    font-weight: bold;
+    color: #eaeaea;
+}
+QGroupBox::title {
+    subcontrol-origin: margin;
+    subcontrol-position: top left;
+    padding: 0 5px;
+}
+
+/* Etiquetas */
+QLabel {
+    color: #eaeaea;
+}
+
+/* ComboBox */
+QComboBox {
+    background-color: #2b2e3b;
+    color: #eaeaea;
+    border: 1px solid #3a3e4f;
+    border-radius: 4px;
+    padding: 4px;
+}
+QComboBox::drop-down {
+    border: none;
+}
+QComboBox QAbstractItemView {
+    background-color: #2b2e3b;
+    selection-background-color: #3a3e4f;
+    color: #eaeaea;
+}
+
+/* Barra de progreso */
+QProgressBar {
+    border: 1px solid #3a3e4f;
+    border-radius: 4px;
+    text-align: center;
+    color: #eaeaea;
+    background-color: #1a1a1f;
+}
+QProgressBar::chunk {
+    background-color: #2d89ef;
+    border-radius: 4px;
+}
+
+/* Botones de acción */
+QPushButton#PrimaryButton {
+    background-color: #2d89ef;
+    color: white;
+    font-weight: bold;
+    padding: 8px 14px;
+    border-radius: 6px;
+    border: none;
+}
+QPushButton#PrimaryButton:hover {
+    background-color: #1e5cb3;
+}
+QPushButton#DangerButton {
+    background-color: #d9534f;
+    color: white;
+    font-weight: bold;
+    padding: 8px 14px;
+    border-radius: 6px;
+    border: none;
+}
+QPushButton#DangerButton:hover {
+    background-color: #c9302c;
+}
