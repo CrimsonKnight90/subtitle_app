@@ -1,53 +1,43 @@
-from PySide6.QtCore import QObject, Signal, Slot
-import time
-from .translation_service import TranslationService
+from PySide6.QtCore import QObject, Signal
+from app.gui.translate.translation_service import TranslationService
+from app.core import subtitles
+import os
 
 class TranslationWorker(QObject):
     progress = Signal(int)
     finished = Signal(str)
     error = Signal(str)
 
-    def __init__(self, file_path, src_lang, tgt_lang, cancel_flag):
+    def __init__(self, file_path, src_lang, tgt_lang, cancel_flag, engine):
         super().__init__()
         self.file_path = file_path
         self.src_lang = src_lang
         self.tgt_lang = tgt_lang
         self.cancel_flag = cancel_flag
-        self.service = TranslationService()
+        self.service = TranslationService(engine)
 
-    @Slot()
     def run(self):
         try:
-            # Leer archivo de subtítulos
-            with open(self.file_path, "r", encoding="utf-8") as f:
-                lines = f.readlines()
+            entries = subtitles.load_srt(self.file_path)
+            texts = [e.original for e in entries]
+            total = len(texts)
 
-            total = len(lines)
-            translated_lines = []
+            translated_texts = []
+            batch_size = 10
 
-            for i, line in enumerate(lines):
+            for i in range(0, total, batch_size):
                 if self.cancel_flag.is_set():
-                    self.error.emit("Traducción cancelada por el usuario.")
                     return
+                batch = texts[i:i+batch_size]
+                translated_batch = self.service.translate_lines(batch, self.src_lang, self.tgt_lang)
+                translated_texts.extend(translated_batch)
+                self.progress.emit(int((len(translated_texts) / total) * 100))
 
-                # Solo traducir líneas que no sean números ni timestamps
-                if not line.strip().isdigit() and "-->" not in line:
-                    translated_line = self.service.translate_text(
-                        line.strip(), self.src_lang, self.tgt_lang
-                    )
-                    translated_lines.append(translated_line + "\n")
-                else:
-                    translated_lines.append(line)
+            for e, t in zip(entries, translated_texts):
+                e.translated = t
 
-                # Emitir progreso
-                self.progress.emit(int((i + 1) / total * 100))
-                time.sleep(0.01)  # Simulación de carga
-
-            # Guardar archivo traducido
             output_file = self.file_path.replace(".srt", "_translated.srt")
-            with open(output_file, "w", encoding="utf-8") as f:
-                f.writelines(translated_lines)
-
+            subtitles.save_srt(entries, output_file)
             self.finished.emit(output_file)
 
         except Exception as e:

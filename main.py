@@ -1,7 +1,8 @@
 import sys
+from pathlib import Path
 from PySide6.QtWidgets import QApplication, QMessageBox
 from app.gui.main_window import MainWindow
-from pathlib import Path
+from app.core import libretranslate_manager  # ⬅ Importar aquí
 
 def show_fatal_error(message):
     """Muestra un mensaje de error fatal antes de cerrar."""
@@ -12,6 +13,9 @@ def show_fatal_error(message):
 def main():
     try:
         app = QApplication(sys.argv)
+
+        # ⬅ Conectar cierre limpio de LibreTranslate al salir
+        app.aboutToQuit.connect(libretranslate_manager.stop_libretranslate)
 
         # Cargar estilos desde styles.qss si existe
         qss_path = Path("styles.qss")

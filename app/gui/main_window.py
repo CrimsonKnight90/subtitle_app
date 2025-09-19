@@ -1,15 +1,12 @@
 from pathlib import Path
 from PySide6.QtWidgets import QMainWindow, QStackedWidget, QMessageBox
 from PySide6.QtGui import QAction, QIcon
+from PySide6.QtCore import Signal
 from app.gui.extract.extract_widget import ExtractWidget
 from app.services.settings import get_settings, save_config
-from PySide6.QtCore import Signal
 from app.services.i18n import get_translator
-
-# 🔹 NUEVOS IMPORTS
 from app.gui.translate.translation_widget import TranslationWidget
 from app.gui.translate.translation_controller import TranslationController
-
 
 class MainWindow(QMainWindow):
     language_changed = Signal()
@@ -32,20 +29,17 @@ class MainWindow(QMainWindow):
         # Instancias de las secciones existentes
         self.extract_widget = ExtractWidget(self)
 
-        # 🔹 NUEVA SECCIÓN DE TRADUCCIÓN DE SUBTÍTULOS
+        # Nueva sección de traducción
         self.translation_widget = TranslationWidget(self)
         self.translation_controller = TranslationController(self.translation_widget)
 
         # Conectar widgets a la señal de cambio de idioma
         self.language_changed.connect(self.extract_widget.retranslate_ui)
-        # Si quieres que TranslationWidget soporte cambio de idioma, implementa retranslate_ui en él y descomenta:
-        # self.language_changed.connect(self.translation_widget.retranslate_ui)
 
-        # Conectar señales para bloquear menú durante extracción
+        # Bloqueo de menú durante procesos
         self.extract_widget.processing_started.connect(lambda: self.menuBar().setEnabled(False))
         self.extract_widget.processing_finished.connect(lambda: self.menuBar().setEnabled(True))
 
-        # Conectar señales para bloquear menú durante traducción de subtítulos
         if hasattr(self.translation_widget, "processing_started"):
             self.translation_widget.processing_started.connect(lambda: self.menuBar().setEnabled(False))
         if hasattr(self.translation_widget, "processing_finished"):
@@ -65,7 +59,7 @@ class MainWindow(QMainWindow):
     def _rebuild_menubar(self):
         self.menuBar().clear()
 
-        # Menú principal de subtítulos
+        # Menú principal
         menu_subs = self.menuBar().addMenu(self.t("subtitles_menu"))
         act_extract = QAction(self.t("menu_extract"), self)
         act_subs_translate = QAction(self.t("menu_subtitles_translate"), self)
@@ -105,8 +99,5 @@ class MainWindow(QMainWindow):
         self.extract_widget.tree.set_ui_language(lang_code)
         self.extract_widget._apply_translations()
 
-        # Emitir señal global para refrescar todos los widgets conectados
         self.language_changed.emit()
-
-        # Reconstruir menús con el nuevo idioma
         self._rebuild_menubar()

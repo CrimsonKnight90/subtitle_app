@@ -1,4 +1,7 @@
-/app/vendors/ffmpeg/
+/app/vendors/
+/ffmpeg/
+*.zip
+*.exe
 venv/
 .venv/
 __pycache__/
