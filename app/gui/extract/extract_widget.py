@@ -395,6 +395,13 @@ class ExtractWidget(QWidget):
             dlg.accept()
 
     def retranslate_ui(self):
-        """Actualiza los textos del widget según el idioma actual."""
         self.t = get_translator()
-        self._apply_translations()
+        self.table.setHorizontalHeaderLabels([
+            self.t("title") if "title" in dir(self.t) else "Archivo",
+            "Formato", self.t("completed"), self.t("menu_translate"),
+            self.t("source_lang"), self.t("target_lang"), "%"
+        ])
+        self.btn_add.setText(self.t("add_subtitles"))
+        self.btn_translate.setText(self.t("start"))
+        self.btn_cancel.setText(self.t("cancel"))
+

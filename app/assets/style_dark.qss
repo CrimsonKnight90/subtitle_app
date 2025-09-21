@@ -1,0 +1,39 @@
+/* Base */
+QMainWindow { background-color: #121217; color: #eaeaea; }
+QWidget { color: #eaeaea; }
+
+/* Inputs */
+QLineEdit, QComboBox, QSpinBox, QDoubleSpinBox, QTextEdit {
+  background: #1a1c22; color: #eaeaea; border: 1px solid #343846; border-radius: 6px; padding: 6px;
+}
+QComboBox QAbstractItemView { background: #1a1c22; color: #eaeaea; selection-background-color: #2c3140; }
+
+/* Tabla */
+QTableWidget, QTableView {
+  background: #161821; gridline-color: #2b2e3b; selection-background-color: #2d89ef33; selection-color: #eaeaea;
+  border: 1px solid #2b2e3b; border-radius: 6px;
+}
+QHeaderView::section {
+  background: #1f2230; color: #eaeaea; border: none; padding: 6px; font-weight: 600;
+}
+
+/* Botones */
+QPushButton { padding: 9px 14px; background: #2b2e3b; color: #eaeaea; border-radius: 8px; border: 1px solid #3a3e4f; }
+QPushButton:hover { background: #3a3e4f; }
+QPushButton#PrimaryButton { background: #2d89ef; color: white; border: none; }
+QPushButton#PrimaryButton:hover { background: #1e5cb3; }
+QPushButton#DangerButton { background: #d9534f; color: white; border: none; }
+QPushButton#DangerButton:hover { background: #c9302c; }
+
+/* Progreso */
+QProgressBar {
+  border: 1px solid #3a3e4f; border-radius: 8px; text-align: center; color: #eaeaea; background: #181a22; height: 16px;
+}
+QProgressBar::chunk { background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #2d89ef, stop:1 #7cb8ff); border-radius: 8px; }
+
+/* GroupBox */
+QGroupBox { border: 1px solid #3a3e4f; border-radius: 8px; margin-top: 12px; padding: 10px; font-weight: 600; }
+QGroupBox::title { subcontrol-origin: margin; subcontrol-position: top left; padding: 0 6px; }
+
+/* Tooltips */
+QToolTip { background: #2b2e3b; color: #eaeaea; border: 1px solid #3a3e4f; }

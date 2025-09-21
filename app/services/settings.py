@@ -40,6 +40,9 @@ def load_config() -> dict:
     data.setdefault("auto_select", True)
     # 🔹 Nuevo: idioma preferido
     data.setdefault("preferred_lang", None)
+    # en load_config()
+    data.setdefault("ui_language", "es")
+    data.setdefault("ui_theme", "dark")  # dark | light
 
     return data
 

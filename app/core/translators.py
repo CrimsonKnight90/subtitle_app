@@ -1,106 +1,82 @@
-# app/core/translate.py
+# app/core/translators.py
 from abc import ABC, abstractmethod
 from time import sleep
-from typing import Iterable
-import time
-from deep_translator import GoogleTranslator
-
+from typing import List, Dict
+import random
 
 class ITranslator(ABC):
     @abstractmethod
-    def translate_lines(self, lines: list[str], src: str, dst: str) -> list[str]:
+    def translate_lines(self, lines: List[str], src: str, dst: str) -> List[str]:
         ...
+
+def _dedup(lines: List[str]) -> tuple[List[str], Dict[int, int]]:
+    uniq = {}
+    order = []
+    for idx, line in enumerate(lines):
+        key = line.strip()
+        if key not in uniq:
+            uniq[key] = len(order)
+            order.append(key)
+    index_map = {}
+    for idx, line in enumerate(lines):
+        index_map[idx] = uniq[line.strip()]
+    return order, index_map
+
+def _recompose(unique_in: List[str], unique_out: List[str], index_map: Dict[int, int]) -> List[str]:
+    return [unique_out[index_map[i]] if unique_in[index_map[i]].strip() else "" for i in range(len(index_map))]
 
 class GoogleFreeTranslator(ITranslator):
     def __init__(self):
         from deep_translator import GoogleTranslator
-        self._ctor = GoogleTranslator
-    def translate_lines(self, lines, src="auto", dst="es"):
-        tr = self._ctor(source=src, target=dst)
-        result = []
-        for line in lines:
-            result.append(tr.translate(line) if line.strip() else line)
-            sleep(0.05)  # micro-pausing para evitar rate-limit
-        return result
+        self.GoogleTranslator = GoogleTranslator
 
-class LibreTranslateTranslator(ITranslator):
-    def __init__(self, base_url="https://libretranslate.com"):
-        import requests
-        self.base_url = base_url
-        self.requests = requests
     def translate_lines(self, lines, src="auto", dst="es"):
-        # Traducción línea a línea para ser amable con el servidor
-        out = []
-        for line in lines:
-            if not line.strip():
-                out.append(line); continue
-            r = self.requests.post(f"{self.base_url}/translate",
-                                   json={"q": line, "source": src, "target": dst, "format": "text"},
-                                   timeout=15)
-            r.raise_for_status()
-            out.append(r.json().get("translatedText", line))
-            sleep(0.1)
-        return out
+        # 1 traductor por lote, dedup y backoff suave
+        tr = self.GoogleTranslator(source=src, target=dst)
+        unique, index_map = _dedup(lines)
+        out = [""] * len(unique)
+        for i, text in enumerate(unique):
+            if not text:
+                out[i] = ""
+                continue
+            for attempt in range(4):
+                try:
+                    out[i] = tr.translate(text)
+                    break
+                except Exception:
+                    sleep(0.25 * (2 ** attempt) + random.random() * 0.1)
+            else:
+                out[i] = text  # fallback
+            sleep(0.02)  # micro pausa
+        return _recompose(unique, out, index_map)
 
 class MyMemoryTranslator(ITranslator):
     def __init__(self):
         import requests
-        self.requests = requests
+        self.session = requests.Session()
+
     def translate_lines(self, lines, src="auto", dst="es"):
-        out=[]
-        for line in lines:
-            if not line.strip():
-                out.append(line); continue
-            r = self.requests.get("https://api.mymemory.translated.net/get",
-                                  params={"q": line, "langpair": f"{src}|{dst}"}, timeout=15)
-            r.raise_for_status()
-            data = r.json()
-            out.append(data.get("responseData", {}).get("translatedText", line))
-            sleep(0.1)
-        return out
-
-class RouterTranslator(ITranslator):
-    """
-    Orquesta varios traductores con fallback.
-    Incluye translate_lines_with_provider para devolver también el proveedor usado.
-    """
-
-    def __init__(self, providers):
-        self.providers = providers
-
-    def translate(self, text, src, dst):
-        for provider in self.providers:
-            try:
-                result = provider.translate(text, src, dst)
-                if result:
-                    return result
-            except Exception:
+        # MyMemory no acepta 'auto': que alguien arriba fije 'src'
+        unique, index_map = _dedup(lines)
+        out = [""] * len(unique)
+        for i, text in enumerate(unique):
+            if not text:
+                out[i] = ""
                 continue
-        return None
-
-    def translate_lines(self, lines, src, dst):
-        for provider in self.providers:
-            try:
-                result = provider.translate_lines(lines, src, dst)
-                if result:
-                    return result
-            except Exception:
-                continue
-        return [None] * len(lines)
-
-    def translate_lines_with_provider(self, lines, src, dst):
-        """
-        Traduce con fallback y devuelve (lista_traducida, nombre_proveedor).
-        """
-        for provider in self.providers:
-            provider_name = provider.__class__.__name__
-            try:
-                result = provider.translate_lines(lines, src, dst)
-                if result:
-                    return result, provider_name
-            except Exception:
-                continue
-        return [f"[ERROR] {line}" for line in lines], "None"
-
-
-
+            for attempt in range(4):
+                try:
+                    r = self.session.get(
+                        "https://api.mymemory.translated.net/get",
+                        params={"q": text, "langpair": f"{src}|{dst}"},
+                        timeout=10,
+                    )
+                    r.raise_for_status()
+                    data = r.json()
+                    out[i] = data.get("responseData", {}).get("translatedText", text)
+                    break
+                except Exception:
+                    sleep(0.25 * (2 ** attempt) + random.random() * 0.1)
+            else:
+                out[i] = text
+            sleep(0.03)
+        return _recompose(unique, out, index_map)
