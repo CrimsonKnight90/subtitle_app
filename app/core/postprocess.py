@@ -1,13 +1,7 @@
-# app\core\postprocess.py
+# app/core/postprocess.py
 import re
-
-# Diccionario de correcciones personalizadas
-CORRECCIONES = {
-    "Llevan temprano": "Han llegado temprano",
-    "código de liquidación": "código de acceso",
-    "Luchador TIE": "TIE Fighter",
-    "Capitán ...": "capitán..."
-}
+import unicodedata
+from app.core.correcciones import CORRECCIONES
 
 def aplicar_diccionario(texto: str) -> str:
     for original, corregido in CORRECCIONES.items():
@@ -24,5 +18,14 @@ def limpiar_formato(texto: str) -> str:
     texto = texto.replace(" ...", "...")
     return texto
 
+def normalizar_unicode(texto: str) -> str:
+    # Asegura que todos los acentos y ñ estén en forma estándar NFC
+    return unicodedata.normalize("NFC", texto)
+
 def postprocesar(texto: str) -> str:
-    return limpiar_formato(aplicar_diccionario(texto))
+    if not texto:
+        return texto
+    texto = normalizar_unicode(texto.strip())
+    texto = aplicar_diccionario(texto)
+    texto = limpiar_formato(texto)
+    return texto

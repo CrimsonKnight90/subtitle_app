@@ -59,12 +59,16 @@ class TranslationWorker(QObject):
             print(f"[WORKER] {len(unique_texts)} líneas únicas detectadas de {total} totales")
 
             # Configuración de lotes según motor
-            if self.service.engine == "google_free":
-                max_lines, max_chars, sleep_after_batch = 8, 1500, 0.05
+            if self.service.engine == "google_v1":
+                # Mirror SE’s ~1500 char limit, leverage one HTTP call per batch
+                max_lines, max_chars, sleep_after_batch = 60, 1400, 0.02
+            elif self.service.engine == "google_free":
+                # deep_translator is more sensitive, use smaller batches
+                max_lines, max_chars, sleep_after_batch = 20, 900, 0.05
             elif self.service.engine == "mymemory":
-                max_lines, max_chars, sleep_after_batch = 20, 4000, 0.0
+                max_lines, max_chars, sleep_after_batch = 40, 4000, 0.0
             else:
-                max_lines, max_chars, sleep_after_batch = 10, 2500, 0.02
+                max_lines, max_chars, sleep_after_batch = 20, 2500, 0.02
 
             def yield_batches(items, max_lines, max_chars):
                 batch, char_count = [], 0

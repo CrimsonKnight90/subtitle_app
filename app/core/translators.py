@@ -52,39 +52,31 @@ class GoogleFreeTranslator(ITranslator):
         unique, index_map = _dedup(lines)
         out = [""] * len(unique)
 
-        # pre-llenar cache y tareas
-        tasks = {}
-        with ThreadPoolExecutor(max_workers=MAX_PARALLEL) as pool:
-            for i, text in enumerate(unique):
-                if cancel_flag and cancel_flag.is_set():
-                    break
-                if not text:
-                    out[i] = ""
-                    continue
+        # deep_translator supports translate_batch; chunk to avoid overlong requests
+        CHUNK_SIZE = 50
+        chunks = [unique[i:i + CHUNK_SIZE] for i in range(0, len(unique), CHUNK_SIZE)]
+        idx = 0
+        for chunk in chunks:
+            if cancel_flag and cancel_flag.is_set():
+                break
+            try:
+                batch_res = tr.translate_batch(chunk)
+            except Exception:
+                batch_res = chunk  # fallback
+            for j, text in enumerate(chunk):
+                res = batch_res[j] if j < len(batch_res) else text
                 key = (src, dst, text)
-                if key in self._cache:
-                    out[i] = self._cache[key]
-                    continue
-                # schedule
-                tasks[pool.submit(self._translate_one, tr, text, src, dst)] = (i, key)
+                self._cache[key] = res
+                out[idx + j] = res
+            idx += len(chunk)
 
-            for future in as_completed(tasks):
-                if cancel_flag and cancel_flag.is_set():
-                    break
-                i, key = tasks[future]
-                try:
-                    res = future.result()
-                    out[i] = res
-                    self._cache[key] = res
-                except Exception:
-                    out[i] = key[2]  # fallback al original
-
-        # rellena los que queden vacíos si se canceló a mitad
+        # Fill any remaining blanks if cancelled mid-way
         for i, text in enumerate(unique):
             if out[i] == "":
                 out[i] = text if text else ""
 
         return _recompose(unique, out, index_map)
+
 
 class MyMemoryTranslator(ITranslator):
     def __init__(self):
@@ -142,3 +134,83 @@ class MyMemoryTranslator(ITranslator):
                 out[i] = text if text else ""
 
         return _recompose(unique, out, index_map)
+
+class GoogleV1Translator(ITranslator):
+    def __init__(self):
+        import requests
+        self.session = requests.Session()
+        # Persistent headers like SE’s Initialize()
+        self.session.headers.update({
+            "user-agent": "Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2228.0 Safari/537.36",
+            "Content-Type": "application/json; charset=UTF-8",
+        })
+        self.base = "https://translate.googleapis.com/"
+
+    def _build_url(self, src: str, dst: str, q: str) -> str:
+        from urllib.parse import quote_plus
+        # Mirror SE: translate_a/single?client=gtx&sl=...&tl=...&dt=t&q=...
+        return (
+            f"{self.base}translate_a/single?"
+            f"client=gtx&sl={src}&tl={dst}&dt=t&q={quote_plus(q)}"
+        )
+
+    def _parse_google_v1(self, payload: str) -> list[str]:
+        # Lightweight parser that mirrors SE’s ConvertJsonObjectToStringLines
+        import json, re
+        try:
+            data = json.loads(payload)
+        except Exception:
+            # Some responses are JS-like arrays; try eval-safe fallback
+            # As last resort, return raw payload to avoid crashing
+            return [payload]
+
+        lines = []
+        if isinstance(data, list) and data:
+            first = data[0]
+            if isinstance(first, list):
+                for item in first:
+                    if isinstance(item, list) and item:
+                        s = item[0] or ""
+                        if isinstance(s, str):
+                            # Trim escaped CRLF y limpiar secuencias de nueva línea
+                            if s.endswith("\\r\\n"):
+                                s = s[:-4]
+                            try:
+                                # Reemplazar secuencias escapadas por saltos de línea reales
+                                s = s.replace("\\n", "\n")
+                                # Normalizar Unicode para acentos y ñ
+                                import unicodedata
+                                s = unicodedata.normalize("NFC", s)
+                            except Exception:
+                                pass
+                            lines.append(s)
+                        else:
+                            lines.append("")
+                    else:
+                        lines.append("")
+        # Limpiar espacios antes de saltos de línea (como hace Subtitle Edit)
+        lines = [re.sub(r" +\n", "\n", ln).strip() for ln in lines]
+
+        return lines
+
+    def translate_lines(self, lines: list[str], src="auto", dst="es", cancel_flag=None) -> list[str]:
+        # Join batch into one request, one payload
+        # Use a delimiter unlikely to occur; choose explicit newline
+        batch = [ln.strip() for ln in lines]
+        joined = "\n".join(batch)
+
+        if cancel_flag and cancel_flag.is_set():
+            return lines
+
+        url = self._build_url(src, dst, joined)
+        try:
+            r = self.session.get(url, timeout=REQ_TIMEOUT)
+            r.raise_for_status()
+            parsed = self._parse_google_v1(r.text)
+            # Google sometimes returns fewer segments; pad safely
+            if len(parsed) < len(batch):
+                parsed += [""] * (len(batch) - len(parsed))
+            return parsed[:len(batch)]
+        except Exception:
+            # Safe fallback: return originals to avoid blocking
+            return lines

@@ -38,7 +38,7 @@ class TranslationWidget(QWidget):
         self.cmb_target = QComboBox();
         self.cmb_target.addItems(["es", "en", "fr", "de"])
         self.cmb_engine = QComboBox();
-        self.cmb_engine.addItems(["google_free", "mymemory"])
+        self.cmb_engine.addItems(["google_v1", "google_free", "mymemory"])
 
         self.lbl_source = QLabel(self.t("source_lang"))
         self.lbl_target = QLabel(self.t("target_lang"))

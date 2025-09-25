@@ -1,5 +1,5 @@
 # app\gui\translate\translation_service.py
-from app.core.translators import GoogleFreeTranslator, MyMemoryTranslator
+from app.core.translators import GoogleFreeTranslator, MyMemoryTranslator, GoogleV1Translator
 import time
 import threading
 
@@ -9,6 +9,7 @@ class TranslationService:
         self.engine = engine
         self.translators = {
             "google_free": GoogleFreeTranslator(),
+            "google_v1": GoogleV1Translator(),
             "mymemory": MyMemoryTranslator(),
         }
 
