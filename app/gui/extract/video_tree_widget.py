@@ -1,3 +1,4 @@
+# app\gui\extract\video_tree_widget.py
 # 📄 Archivo: video_tree_widget.py
 
 from pathlib import Path

@@ -1,9 +1,11 @@
+# main.py
 import sys
 from pathlib import Path
 from PySide6.QtWidgets import QApplication, QMessageBox
 from app.gui.main_window import MainWindow
 from app.services.settings import get_settings
 from app.services.style_manager import apply_theme
+
 def show_fatal_error(message):
     """Muestra un mensaje de error fatal antes de cerrar."""
     app = QApplication.instance() or QApplication(sys.argv)

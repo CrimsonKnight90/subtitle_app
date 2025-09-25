@@ -9,4 +9,10 @@ __pycache__/
 .idea/
 *.log
 *.tmp
-styles.ssq
+*.srt
+*.bat
+/log.py
+/1.py
+/estructura.txt
+/requirements.py
+/app/assets/icons/arrow_down.svg

@@ -1,3 +1,4 @@
+# app\services\style_manager.py
 from pathlib import Path
 from app.services.settings import get_settings, save_config
 

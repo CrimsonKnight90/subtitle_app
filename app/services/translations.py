@@ -1,3 +1,4 @@
+# app\services\translations.py
 TRANSLATIONS = {
     "es": {
     # App y menús
@@ -50,6 +51,7 @@ TRANSLATIONS = {
     "subfolder_name_prompt": "Introduce el nombre de la subcarpeta:",
     "subfolder_name_default": "subtitulos extraidos",
     "select_output_folder": "Selecciona carpeta de salida",
+    "translated_subtitles": "Subtítulos_Traducidos",
 
     # Mensajes y etiquetas
     "folder": "Carpeta",
@@ -75,6 +77,14 @@ TRANSLATIONS = {
     "header_language": "Idioma",
     "header_codec": "Codec",
     "header_flags": "Flags",
+
+    # Cabeceras de la tabla de translate
+    "format": "Formato",
+    "progress": "%",
+
+    # Cabeceras de la tabla divididad de translate
+    "index": "No.",
+    "original": "Origen",
 
     # Resumen final
     "final_summary": "Resumen final",
@@ -182,6 +192,7 @@ TRANSLATIONS = {
     "subfolder_name_prompt": "Enter the name of the subfolder:",
     "subfolder_name_default": "extracted subtitles",
     "select_output_folder": "Select output folder",
+    "translated_subtitles": "Translated_Subtitles",
 
     # Messages and labels
     "folder": "Folder",
@@ -207,6 +218,14 @@ TRANSLATIONS = {
     "header_language": "Language",
     "header_codec": "Codec",
     "header_flags": "Flags",
+
+    # Translate table headers
+    "format": "Format",
+    "progress": "%",
+
+    # Translate split table headers
+    "index": "No.",
+    "original": "Origin",
 
     # Final summary
     "final_summary": "Final Summary",
@@ -314,6 +333,7 @@ TRANSLATIONS = {
     "subfolder_name_prompt": "Entrez le nom du sous-dossier :",
     "subfolder_name_default": "sous-titres extraits",
     "select_output_folder": "Sélectionner le dossier de sortie",
+    "translated_subtitles": "Sous-titres_Traduits",
 
     # Messages et étiquettes
     "folder": "Dossier",
@@ -339,6 +359,14 @@ TRANSLATIONS = {
     "header_language": "Langue",
     "header_codec": "Codec",
     "header_flags": "Drapeaux",
+
+    # Translate table headers
+    "format": "Format",
+    "progress": "%",
+
+    # Traduire les en-têtes de tableau fractionnés
+    "index": "No.",
+    "original": "Origène",
 
     # Résumé final
     "final_summary": "Résumé final",

@@ -1,3 +1,4 @@
+# app\services\config.py
 """
 Módulo de configuración global de la aplicación.
 Define constantes y parámetros reutilizables.

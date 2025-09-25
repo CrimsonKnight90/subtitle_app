@@ -1,3 +1,4 @@
+# app\gui\extract\workers.py
 from PySide6.QtCore import QObject, Signal
 from pathlib import Path
 from app.core.batch import process_one

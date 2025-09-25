@@ -1,3 +1,4 @@
+# app\gui\extract\extract_widget.py
 from pathlib import Path
 from datetime import datetime
 import winsound
@@ -193,22 +194,6 @@ class ExtractWidget(QWidget):
         else:
             color = "#2196F3"
 
-        self.progress.setStyleSheet(f"""
-            QProgressBar {{
-                border: 2px solid #555;
-                border-radius: 8px;
-                text-align: center;
-                font-weight: bold;
-                font-size: 14px;
-                color: #fff;
-                background-color: #2b2b2b;
-            }}
-            QProgressBar::chunk {{
-                border-radius: 8px;
-                background-color: {color};
-            }}
-        """)
-
     # ------------------ Método para parar el proceso ------------------
     def stop_batch(self):
         if hasattr(self, "worker") and self.worker:
@@ -338,26 +323,12 @@ class ExtractWidget(QWidget):
 
         layout = QVBoxLayout(dlg)
 
-        btn_style = """
-                    QPushButton {
-                        padding: 8px;
-                        text-align: left;
-                        font-size: 14px;
-                        border: 1px solid #444;
-                        border-radius: 6px;
-                    }
-                    QPushButton:hover {
-                        background-color: rgba(30, 136, 229, 0.15);
-                    }
-                """
-
         btn_default = QPushButton(QIcon(str(self.icon_path / "folder-subtitles.svg")), self.t("output_default"))
         btn_same = QPushButton(QIcon(str(self.icon_path / "folder-video.svg")), self.t("output_same"))
         btn_same_sub = QPushButton(QIcon(str(self.icon_path / "folder-subdir.svg")), self.t("output_same_sub"))
         btn_custom = QPushButton(QIcon(str(self.icon_path / "folder-custom.svg")), self.t("output_custom"))
 
         for btn in (btn_default, btn_same, btn_same_sub, btn_custom):
-            btn.setStyleSheet(btn_style)
             btn.setIconSize(QSize(20, 20))
             layout.addWidget(btn)
 
@@ -396,12 +367,4 @@ class ExtractWidget(QWidget):
 
     def retranslate_ui(self):
         self.t = get_translator()
-        self.table.setHorizontalHeaderLabels([
-            self.t("title") if "title" in dir(self.t) else "Archivo",
-            "Formato", self.t("completed"), self.t("menu_translate"),
-            self.t("source_lang"), self.t("target_lang"), "%"
-        ])
-        self.btn_add.setText(self.t("add_subtitles"))
-        self.btn_translate.setText(self.t("start"))
-        self.btn_cancel.setText(self.t("cancel"))
 

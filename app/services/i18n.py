@@ -1,3 +1,4 @@
+# app\services\i18n.py
 from app.services.settings import get_settings
 from app.services.translations import TRANSLATIONS
 

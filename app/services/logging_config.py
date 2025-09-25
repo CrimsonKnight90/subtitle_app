@@ -1,3 +1,4 @@
+# app\services\logging_config.py
 from loguru import logger
 from app.services.settings import get_install_dir
 

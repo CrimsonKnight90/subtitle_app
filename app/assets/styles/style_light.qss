@@ -5,6 +5,7 @@ QMainWindow {
     font-family: "Segoe UI", "Arial";
     font-size: 11pt;
 }
+
 /* Menú superior */
 QMenuBar {
     background-color: #f5f7fb;
@@ -15,10 +16,11 @@ QMenuBar::item {
     background: transparent;
     color: #2e3440;
     padding: 6px 12px;
+    border-radius: 4px;
 }
 QMenuBar::item:selected {
-    background: #d0d7e2;
-    border-radius: 4px;
+    background: #e9edf5;
+    border: 1px solid #3d5afe;
 }
 
 /* Menús desplegables */
@@ -26,13 +28,13 @@ QMenu {
     background-color: #ffffff;
     color: #2e3440;
     border: 1px solid #d0d7e2;
+    border-radius: 6px;
 }
 QMenu::item {
     padding: 6px 20px;
-    background: transparent;
 }
 QMenu::item:selected {
-    background: #3d5afe22;   /* azul suave */
+    background: rgba(61, 90, 254, 0.15);
     color: #2e3440;
     border-radius: 4px;
 }
@@ -43,42 +45,65 @@ QLineEdit, QComboBox, QTextEdit, QSpinBox {
     color: #2e3440;
     border: 1px solid #d0d7e2;
     border-radius: 6px;
-    padding: 6px;
+    padding: 6px 8px;
+    min-height: 28px;
+    font-size: 10.5pt;
+}
+
+/* QComboBox refinado */
+QComboBox {
+    padding-right: 28px;
+}
+QComboBox:hover {
+    border: 1px solid #3d5afe;
+    background-color: #f9faff;
+}
+QComboBox:focus {
+    border: 1px solid #005a9e;
+    background-color: #ffffff;
+}
+QComboBox::drop-down {
+    subcontrol-origin: padding;
+    subcontrol-position: top right;
+    width: 24px;
+    border-left: 1px solid #d0d7e2;
+    background: #f0f2f7;
+    border-top-right-radius: 6px;
+    border-bottom-right-radius: 6px;
+}
+QComboBox::down-arrow {
+    image: none;
+    qproperty-text: "▼";
+    color: #2e3440;
+    font-size: 12px;
+    margin-right: 6px;
+}
+QComboBox::down-arrow:on {
+    qproperty-text: "▲";
+    color: #3d5afe;
 }
 QComboBox QAbstractItemView {
     background: #ffffff;
-    selection-background-color: #3d5afe22;
+    border: 1px solid #d0d7e2;
+    selection-background-color: rgba(61, 90, 254, 0.15);
     selection-color: #2e3440;
 }
 
-/* Tabla */
+/* Tablas */
 QTableWidget, QTableView {
     background: #ffffff;
+    color: #2e3440;
     gridline-color: #d0d7e2;
-    selection-background-color: #3d5afe33;
-    selection-color: #2e3440;
+    selection-background-color: #1976d2;
+    selection-color: #ffffff;
     border-radius: 6px;
 }
 QHeaderView::section {
-    background: #e9edf5;
+    background-color: #f0f2f7;
     color: #2e3440;
     padding: 6px;
-    border: none;
+    border: 1px solid #d0d7e2;
     font-weight: bold;
-}
-QTableWidget {
-    background-color: #ffffff;   /* fondo blanco */
-    color: #000000;              /* texto negro */
-    gridline-color: #cccccc;     /* líneas suaves */
-    selection-background-color: #1976d2; /* azul al seleccionar */
-    selection-color: #ffffff;    /* texto blanco sobre selección */
-}
-
-QHeaderView::section {
-    background-color: #f0f0f0;   /* cabecera gris claro */
-    color: #000000;              /* texto negro */
-    padding: 4px;
-    border: 1px solid #cccccc;
 }
 
 /* Botones */
@@ -89,18 +114,24 @@ QPushButton {
     padding: 8px 14px;
     border: 1px solid #cfd6e3;
 }
-QPushButton:hover { background: #e9edf5; }
-QPushButton:pressed { background: #3d5afe; color: white; }
+QPushButton:hover {
+    border: 1px solid #3d5afe;
+    background: #e9edf5;
+}
+QPushButton:pressed {
+    background: #3d5afe;
+    color: #ffffff;
+}
+
 /* ToolBar */
 QToolBar {
-    background: transparent;   /* o mismo color que el fondo */
-    border: none;              /* elimina las franjas */
-    spacing: 4px;              /* opcional: espacio entre botones */
+    background: transparent;
+    border: none;
+    spacing: 4px;
 }
 QToolBar::separator {
-    width: 0px;                /* elimina separadores */
+    width: 0px;
 }
-/* Ocultar el handle (los puntitos de arrastre) */
 QToolBar::handle {
     image: none;
     width: 0px;
@@ -121,6 +152,8 @@ QProgressBar::chunk {
                                 stop:0 #3d5afe, stop:1 #00bcd4);
     border-radius: 8px;
 }
+
+/* Botón de cambio de tema */
 QToolButton#ThemeToggle {
     border: none;
     background: transparent;

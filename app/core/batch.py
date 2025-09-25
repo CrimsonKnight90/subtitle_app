@@ -1,3 +1,4 @@
+# app\core\batch.py
 # 📄 Archivo: app/core/batch.py
 
 from pathlib import Path

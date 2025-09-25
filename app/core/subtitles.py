@@ -1,3 +1,4 @@
+# app\core\subtitles.py
 # app/core/subtitles.py
 import pysrt
 from dataclasses import dataclass

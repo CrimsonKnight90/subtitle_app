@@ -1,3 +1,4 @@
+# app\gui\main_window.py
 from pathlib import Path
 from PySide6.QtWidgets import QMainWindow, QStackedWidget, QMessageBox
 from PySide6.QtGui import QAction, QIcon
@@ -10,7 +11,7 @@ from app.gui.translate.translation_controller import TranslationController
 from PySide6.QtWidgets import QMenu
 from app.services.settings import get_settings, save_config
 from app.services.style_manager import set_theme
-
+import atexit
 class MainWindow(QMainWindow):
     language_changed = Signal()
 
@@ -38,23 +39,38 @@ class MainWindow(QMainWindow):
         # en __init__ luego de crear controller
         self.translation_controller.file_progress.connect(self.translation_widget.on_file_progress)
         self.translation_controller.file_finished.connect(self.translation_widget.on_file_finished)
-        self.translation_controller.all_finished.connect(self.translation_widget.on_all_finished)
+
 
         # Conectar widgets a la señal de cambio de idioma
         self.language_changed.connect(self.extract_widget.retranslate_ui)
 
-        # Bloqueo de menú durante procesos
-        self.translation_widget.processing_started.connect(lambda: self.menuBar().setEnabled(False))
-        self.translation_widget.processing_finished.connect(lambda: self.menuBar().setEnabled(True))
+        # Bloqueo de menú durante procesos (conexión única y segura)
+        self.translation_widget.processing_started.connect(self._on_processing_started)
+        self.translation_widget.processing_finished.connect(self._on_processing_finished)
 
-        if hasattr(self.translation_widget, "processing_started"):
-            self.translation_widget.processing_started.connect(lambda: self.menuBar().setEnabled(False))
-        if hasattr(self.translation_widget, "processing_finished"):
-            self.translation_widget.processing_finished.connect(lambda: self.menuBar().setEnabled(True))
+        # Conectar señales del controlador
+        self.translation_controller.all_result.connect(self.translation_widget.on_all_finished)
 
         # Añadir widgets al stack
         self.stack.addWidget(self.extract_widget)       # índice 0
         self.stack.addWidget(self.translation_widget)   # índice 1
+
+        # --- Toolbar de acciones rápidas ---
+        from PySide6.QtWidgets import QToolBar
+        self.toolbar = QToolBar("Acciones")
+        self.toolbar.setMovable(False)
+        self.addToolBar(self.toolbar)
+
+        # Acción de toggle de tema (sol/luna)
+        self.act_theme_toggle = QAction(self)
+        self.act_theme_toggle.setToolTip("Cambiar tema (Oscuro/Claro)")
+        self.act_theme_toggle.triggered.connect(self._toggle_theme)
+        self.toolbar.addAction(self.act_theme_toggle)
+
+        # Inicializar icono según tema actual
+        S = get_settings()
+        current_theme = S.config.get("ui_theme", "dark")
+        self._update_theme_icon(current_theme)
 
         # Conectar señales de ExtractWidget
         self.extract_widget.request_menu_rebuild.connect(self._rebuild_menubar)
@@ -62,6 +78,10 @@ class MainWindow(QMainWindow):
 
         # Construir menú inicial
         self._rebuild_menubar()
+
+        # AÑADIR ESTAS LÍNEAS NUEVAS:
+        # Cleanup al cerrar aplicación
+        atexit.register(self.translation_controller.cleanup_on_shutdown)
 
     def _rebuild_menubar(self):
         self.menuBar().clear()
@@ -97,6 +117,23 @@ class MainWindow(QMainWindow):
         act_dark.triggered.connect(lambda: set_theme(self._app(), "dark"))
         act_light.triggered.connect(lambda: set_theme(self._app(), "light"))
 
+    def _toggle_theme(self):
+        S = get_settings()
+        current = S.config.get("ui_theme", "dark")
+        new_theme = "light" if current == "dark" else "dark"
+        # Persistir y aplicar
+        set_theme(self._app(), new_theme)
+        # Actualizar icono del botón
+        self._update_theme_icon(new_theme)
+
+    def _update_theme_icon(self, theme: str):
+        # Usa tus SVG: sol para light, luna para dark
+        icon_name = "sun.svg" if theme == "light" else "moon.svg"
+        icon_path = self.icon_path / icon_name
+        self.act_theme_toggle.setIcon(QIcon(str(icon_path)))
+        # Texto accesible
+        self.act_theme_toggle.setText("Claro" if theme == "light" else "Oscuro")
+
     def _app(self):
         from PySide6.QtWidgets import QApplication
         return QApplication.instance()
@@ -121,3 +158,29 @@ class MainWindow(QMainWindow):
 
         self.language_changed.emit()
         self._rebuild_menubar()
+
+    def _on_processing_started(self):
+        """Maneja el inicio de procesamiento de manera segura"""
+        try:
+            self.menuBar().setEnabled(False)
+        except Exception as e:
+            print(f"[WARN] Error deshabilitando menú: {e}")
+
+    def _on_processing_finished(self):
+        """Maneja el fin de procesamiento de manera segura"""
+        try:
+            self.menuBar().setEnabled(True)
+        except Exception as e:
+            print(f"[WARN] Error habilitando menú: {e}")
+
+    def closeEvent(self, event):
+        """Maneja el cierre de la ventana de manera segura"""
+        try:
+            # Cleanup del controlador antes de cerrar
+            if hasattr(self, 'translation_controller'):
+                self.translation_controller.cleanup_on_shutdown()
+            event.accept()
+        except Exception as e:
+            print(f"[MAIN] Error en closeEvent: {e}")
+            event.accept()
+
