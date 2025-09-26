@@ -23,6 +23,14 @@ class TranslationController(QObject):
         # Conectar señales del widget
         self.widget.request_translation.connect(self.start_translations)
         self.widget.cancel_translation.connect(self.cancel_all)
+        # Conectar señales del controlador hacia el widget
+        self.file_progress.connect(self.widget.on_file_progress)
+        self.file_finished.connect(self.widget.on_file_finished)
+        self.all_result.connect(self.widget.on_all_finished)
+
+        # Opcional: reflejar estados globales en el widget
+        self.processing_started.connect(self.widget.processing_started)
+        self.processing_finished.connect(self.widget.processing_finished)
 
         # Estado
         self.service = None  # se inicializa por motor en cada worker si usas motor por worker

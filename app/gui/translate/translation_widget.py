@@ -9,7 +9,8 @@ from PySide6.QtCore import Signal, Qt
 from app.services.i18n import get_translator
 import os
 from pathlib import Path
-
+from langdetect import detect, DetectorFactory
+DetectorFactory.seed = 0  # resultados consistentes
 class TranslationWidget(QWidget):
     request_translation = Signal(list, str, str, str)  # paths, src, dst, engine
     cancel_translation = Signal()
@@ -219,22 +220,11 @@ class TranslationWidget(QWidget):
         hdr.resizeSection(5, 20)  # %
 
     def _detect_language(self, path: str) -> str:
-        """
-        Detecta el idioma del archivo de subtítulos.
-        - Punto de extensión: reemplazar por detector real (por ejemplo, servicio, modelo, etc.).
-        - Fallback seguro: si falla, retorna 'auto' o heurístico.
-        """
         try:
-            # Heurística mínima: puedes leer unas líneas y hacer tu lógica real aquí.
-            # Este stub devuelve 'en' como ejemplo si encuentra caracteres ASCII mayoritarios.
             with open(path, "r", encoding="utf-8", errors="ignore") as f:
-                sample = "".join([next(f) for _ in range(20)])
-            # Heurística muy básica (reemplazar por lógica real):
-            ascii_ratio = sum(1 for ch in sample if ord(ch) < 128) / max(1, len(sample))
-            # Si el usuario eligió 'auto', intentamos detectar; si no, respetamos su 'src'
-            return "en" if ascii_ratio > 0.9 else "es"
+                sample = f.read(2000)  # leer un fragmento
+            return detect(sample)
         except Exception:
-            # Si falla la lectura o detección, retornamos 'auto' como valor neutral.
             return "auto"
 
     # --- menú contextual ---

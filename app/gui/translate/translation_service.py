@@ -58,6 +58,56 @@ class TranslationService:
         """Genera clave de cache para el texto"""
         return f"{src_lang}_{tgt_lang}_{hash(text.strip().lower())}"
 
+    def _clean_html_tags(self, text):
+        """Elimina etiquetas HTML del texto antes de traducir"""
+        import re
+        if not text:
+            return text
+
+        # Patrón para etiquetas HTML comunes en subtítulos
+        html_pattern = r'</?(?:font|b|i|u|strong|em)\s*[^>]*>'
+
+        # Remover etiquetas HTML
+        cleaned = re.sub(html_pattern, '', text, flags=re.IGNORECASE)
+
+        # Limpiar espacios extra que quedan tras remover etiquetas
+        # Colapsar solo espacios y tabs, pero preservar saltos de línea
+        cleaned = re.sub(r'[ \t]+', ' ', cleaned)
+        # Normalizar espacios alrededor de saltos de línea
+        cleaned = re.sub(r' *\n *', '\n', cleaned).strip()
+
+        return cleaned
+
+    def _restore_html_structure(self, original, translated):
+        """Restaura la estructura HTML del texto original en el traducido"""
+        import re
+
+        if not original or not translated:
+            return translated
+
+        # Si el original no tiene etiquetas HTML, devolver traducción tal como está
+        if '<' not in original:
+            return translated
+
+        # Extraer etiquetas de apertura del original
+        opening_tags = re.findall(r'<(?:font|b|i|u|strong|em)\s*[^>]*>', original, re.IGNORECASE)
+
+        # Extraer etiquetas de cierre del original
+        closing_tags = re.findall(r'</(?:font|b|i|u|strong|em)>', original, re.IGNORECASE)
+
+        # Aplicar etiquetas al texto traducido
+        result = translated
+
+        # Agregar etiquetas de apertura al inicio
+        for tag in opening_tags:
+            result = tag + ' ' + result
+
+        # Agregar etiquetas de cierre al final
+        for tag in reversed(closing_tags):
+            result = result + ' ' + tag
+
+        return result.strip()
+
     def _apply_rate_limiting(self):
         """Aplica rate limiting inteligente según el motor"""
         with self._request_lock:
@@ -90,10 +140,17 @@ class TranslationService:
         non_empty_lines = []
         line_mapping = {}  # índice original -> índice en non_empty_lines
 
+        # Almacenar textos originales para restaurar estructura HTML
+        original_lines_with_html = []
+        cleaned_lines = []
+
         for i, line in enumerate(lines):
             if line.strip():
                 line_mapping[i] = len(non_empty_lines)
-                non_empty_lines.append(line.strip())
+                original_lines_with_html.append(line.strip())  # Guardar con HTML
+                cleaned_line = self._clean_html_tags(line.strip())  # Limpiar para traducir
+                non_empty_lines.append(cleaned_line)
+                cleaned_lines.append(cleaned_line)
 
         if not non_empty_lines:
             return lines  # Solo líneas vacías
@@ -166,13 +223,24 @@ class TranslationService:
         for translate_idx, translation in zip(translate_indices, translated_new):
             final_translations[translate_idx] = translation
 
-        # Reconstruir resultado final manteniendo líneas vacías
+        # Reconstruir resultado final manteniendo líneas vacías y restaurando HTML
         result = []
+        translation_idx_counter = 0
+
         for i, original_line in enumerate(lines):
             if i in line_mapping:
-                # Línea no vacía, usar traducción
+                # Línea no vacía, usar traducción y restaurar HTML
                 translation_idx = line_mapping[i]
-                result.append(final_translations[translation_idx])
+                translated_text = final_translations[translation_idx]
+
+                # Restaurar estructura HTML del original
+                if translation_idx_counter < len(original_lines_with_html):
+                    original_with_html = original_lines_with_html[translation_idx_counter]
+                    restored_translation = self._restore_html_structure(original_with_html, translated_text)
+                    result.append(restored_translation)
+                    translation_idx_counter += 1
+                else:
+                    result.append(translated_text)
             else:
                 # Línea vacía, mantener como está
                 result.append(original_line)

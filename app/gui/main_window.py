@@ -56,12 +56,17 @@ class MainWindow(QMainWindow):
         self.stack.addWidget(self.translation_widget)   # índice 1
 
         # --- Toolbar de acciones rápidas ---
-        from PySide6.QtWidgets import QToolBar
+        from PySide6.QtWidgets import QToolBar, QWidget, QSizePolicy
         self.toolbar = QToolBar("Acciones")
         self.toolbar.setMovable(False)
         self.addToolBar(self.toolbar)
 
-        # Acción de toggle de tema (sol/luna)
+        # Agregar spacer para empujar el botón de tema a la derecha
+        spacer = QWidget()
+        spacer.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
+        self.toolbar.addWidget(spacer)
+
+        # Acción de toggle de tema (sol/luna) - AHORA A LA DERECHA
         self.act_theme_toggle = QAction(self)
         self.act_theme_toggle.setToolTip("Cambiar tema (Oscuro/Claro)")
         self.act_theme_toggle.triggered.connect(self._toggle_theme)
@@ -99,23 +104,24 @@ class MainWindow(QMainWindow):
 
         # Menú de configuración
         menu_config = self.menuBar().addMenu(self.t("preferences"))
+
         # Idioma
         menu_lang = menu_config.addMenu(self.t("interface_language"))
         for code in ["es", "en", "fr"]:
             act = menu_lang.addAction(self.t({"es": "spanish", "en": "english", "fr": "french"}[code]))
             act.triggered.connect(lambda _, c=code: self._cambiar_idioma(c))
 
-        # Menú de ayuda
-        menu_help = self.menuBar().addMenu(self.t("help"))
-        act_manual = menu_help.addAction(self.t("manual"))
-        act_manual.triggered.connect(self._mostrar_manual)
-
-        # Tema
+        # TEMA MOVIDO AQUÍ (segundo lugar)
         menu_theme = menu_config.addMenu(self.t("interface_theme") if hasattr(self.t, "__call__") else "Tema")
         act_dark = menu_theme.addAction("Oscuro")
         act_light = menu_theme.addAction("Claro")
         act_dark.triggered.connect(lambda: set_theme(self._app(), "dark"))
         act_light.triggered.connect(lambda: set_theme(self._app(), "light"))
+
+        # Menú de ayuda (al final)
+        menu_help = self.menuBar().addMenu(self.t("help"))
+        act_manual = menu_help.addAction(self.t("manual"))
+        act_manual.triggered.connect(self._mostrar_manual)
 
     def _toggle_theme(self):
         S = get_settings()

@@ -189,7 +189,8 @@ class GoogleV1Translator(ITranslator):
                     else:
                         lines.append("")
         # Limpiar espacios antes de saltos de línea (como hace Subtitle Edit)
-        lines = [re.sub(r" +\n", "\n", ln).strip() for ln in lines]
+        # Preservar saltos de línea; solo quitar espacios antes de \n
+        lines = [re.sub(r" +\n", "\n", ln) for ln in lines]
 
         return lines
 
@@ -207,10 +208,24 @@ class GoogleV1Translator(ITranslator):
             r = self.session.get(url, timeout=REQ_TIMEOUT)
             r.raise_for_status()
             parsed = self._parse_google_v1(r.text)
-            # Google sometimes returns fewer segments; pad safely
-            if len(parsed) < len(batch):
-                parsed += [""] * (len(batch) - len(parsed))
-            return parsed[:len(batch)]
+
+            # Recombinar todo en un string y dividir por el delimitador original
+            if isinstance(parsed, list):
+                full = "".join(parsed)
+            else:
+                full = str(parsed)
+
+            out_lines = full.split("\n")
+
+            # Ajustar longitud al batch
+            if len(out_lines) < len(batch):
+                out_lines += [""] * (len(batch) - len(out_lines))
+            elif len(out_lines) > len(batch):
+                out_lines = out_lines[:len(batch)]
+
+            return out_lines
         except Exception:
-            # Safe fallback: return originals to avoid blocking
+            # Fallback seguro
             return lines
+
+
