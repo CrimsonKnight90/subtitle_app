@@ -2,7 +2,7 @@
 from app.core.translators import GoogleFreeTranslator, MyMemoryTranslator, GoogleV1Translator
 import time
 import threading
-
+import unicodedata
 
 class TranslationService:
     def __init__(self, engine="google_free"):
@@ -228,8 +228,10 @@ class TranslationService:
         translation_idx_counter = 0
 
         for i, original_line in enumerate(lines):
+            if cancel_flag and cancel_flag.is_set():
+                return lines
+
             if i in line_mapping:
-                # Línea no vacía, usar traducción y restaurar HTML
                 translation_idx = line_mapping[i]
                 translated_text = final_translations[translation_idx]
 
@@ -237,6 +239,7 @@ class TranslationService:
                 if translation_idx_counter < len(original_lines_with_html):
                     original_with_html = original_lines_with_html[translation_idx_counter]
                     restored_translation = self._restore_html_structure(original_with_html, translated_text)
+                    restored_translation = unicodedata.normalize("NFC", restored_translation)
                     result.append(restored_translation)
                     translation_idx_counter += 1
                 else:

@@ -8,8 +8,6 @@ from app.services.settings import get_settings, save_config
 from app.services.i18n import get_translator
 from app.gui.translate.translation_widget import TranslationWidget
 from app.gui.translate.translation_controller import TranslationController
-from PySide6.QtWidgets import QMenu
-from app.services.settings import get_settings, save_config
 from app.services.style_manager import set_theme
 import atexit
 class MainWindow(QMainWindow):
@@ -47,6 +45,10 @@ class MainWindow(QMainWindow):
         # Bloqueo de menú durante procesos (conexión única y segura)
         self.translation_widget.processing_started.connect(self._on_processing_started)
         self.translation_widget.processing_finished.connect(self._on_processing_finished)
+
+        # Conectar señales de ExtractWidget
+        self.extract_widget.processing_started.connect(self._on_processing_started)
+        self.extract_widget.processing_finished.connect(self._on_processing_finished)
 
         # Conectar señales del controlador
         self.translation_controller.all_result.connect(self.translation_widget.on_all_finished)
@@ -123,6 +125,13 @@ class MainWindow(QMainWindow):
         act_manual = menu_help.addAction(self.t("manual"))
         act_manual.triggered.connect(self._mostrar_manual)
 
+        act_ffmpeg = menu_help.addAction("Descargar FFmpeg")
+        act_ffmpeg.triggered.connect(lambda: self._abrir_ffmpeg_web())
+
+    def _abrir_ffmpeg_web(self):
+        import webbrowser
+        webbrowser.open("https://ffmpeg.org/download.html")
+
     def _toggle_theme(self):
         S = get_settings()
         current = S.config.get("ui_theme", "dark")
@@ -189,4 +198,3 @@ class MainWindow(QMainWindow):
         except Exception as e:
             print(f"[MAIN] Error en closeEvent: {e}")
             event.accept()
-

@@ -2,7 +2,7 @@
 from pathlib import Path
 from datetime import datetime
 import winsound
-
+import webbrowser
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QPushButton, QProgressBar,
     QTextEdit, QLabel, QFileDialog, QMessageBox, QHBoxLayout,
@@ -15,7 +15,7 @@ from app.gui.extract.video_tree_widget import VideoTreeWidget
 from app.gui.extract.workers import BatchWorker
 from app.services.settings import get_settings, save_config
 from app.services.translations import TRANSLATIONS
-
+from app.gui.extract.extract_widget_utils.extract_widget_ffmpeg_utils import ffmpeg_available
 
 def get_translator():
     S = get_settings()
@@ -72,7 +72,7 @@ class ExtractWidget(QWidget):
         main_layout.addLayout(row)
 
         # Botón de configuración
-        self.btn_config = QPushButton(QIcon(str(self.icon_path / "settings.svg")), self.t("settings"))
+        self.btn_config = QPushButton(QIcon(str(self.icon_path / "settings.svg")), self.t("output_settings"))
         self.btn_config.setObjectName("PrimaryButton")
         self.btn_config.setIconSize(QSize(20, 20))
         self.btn_config.clicked.connect(self.open_settings_dialog)
@@ -234,6 +234,20 @@ class ExtractWidget(QWidget):
         self.processing_finished.emit()
 
     def start_batch(self):
+        # Comprobar que exite la carpeta de ffmpeg
+        if not ffmpeg_available():
+            reply = QMessageBox.question(
+                self,
+                self.t("ffmpeg_not_found_title"),
+                self.t("ffmpeg_not_found_message"),
+                QMessageBox.Yes | QMessageBox.No
+            )
+
+            if reply == QMessageBox.Yes:
+                webbrowser.open("https://ffmpeg.org/download.html")
+            return
+        # --------------------------------------------------------
+
         selected_tracks = self.tree.collect_selection()
         if not selected_tracks:
             QMessageBox.information(self, self.t("no_selection"), self.t("no_tracks_marked"))
@@ -300,7 +314,7 @@ class ExtractWidget(QWidget):
         self.btn_stop.setText(self.t("stop"))
 
         self.btn_config.setIcon(QIcon(str(self.icon_path / "settings.svg")))
-        self.btn_config.setText(self.t("settings"))
+        self.btn_config.setText(self.t("output_settings"))
 
         self.info_icon_label.setPixmap(QIcon(str(self.icon_path / "idea.svg")).pixmap(20, 20))
         self.info_text_label.setText(self.t("videos_drag_hint"))

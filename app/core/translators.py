@@ -1,10 +1,14 @@
 # app\core\translators.py
-# app/core/translators.py
 from abc import ABC, abstractmethod
 from time import sleep
 from typing import List, Dict
 import random
 from concurrent.futures import ThreadPoolExecutor, as_completed
+import re
+import requests
+import json
+import unicodedata
+from urllib.parse import quote_plus
 
 # Concurrencia interna por lote (ajusta según servicio)
 MAX_PARALLEL = 6
@@ -137,9 +141,7 @@ class MyMemoryTranslator(ITranslator):
 
 class GoogleV1Translator(ITranslator):
     def __init__(self):
-        import requests
         self.session = requests.Session()
-        # Persistent headers like SE’s Initialize()
         self.session.headers.update({
             "user-agent": "Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2228.0 Safari/537.36",
             "Content-Type": "application/json; charset=UTF-8",
@@ -147,22 +149,18 @@ class GoogleV1Translator(ITranslator):
         self.base = "https://translate.googleapis.com/"
 
     def _build_url(self, src: str, dst: str, q: str) -> str:
-        from urllib.parse import quote_plus
-        # Mirror SE: translate_a/single?client=gtx&sl=...&tl=...&dt=t&q=...
         return (
             f"{self.base}translate_a/single?"
             f"client=gtx&sl={src}&tl={dst}&dt=t&q={quote_plus(q)}"
         )
 
     def _parse_google_v1(self, payload: str) -> list[str]:
-        # Lightweight parser that mirrors SE’s ConvertJsonObjectToStringLines
-        import json, re
+        """Parsea la respuesta de Google Translate"""
         try:
             data = json.loads(payload)
-        except Exception:
-            # Some responses are JS-like arrays; try eval-safe fallback
-            # As last resort, return raw payload to avoid crashing
-            return [payload]
+        except Exception as e:
+            print(f"Error parseando JSON: {e}")
+            return []
 
         lines = []
         if isinstance(data, list) and data:
@@ -172,60 +170,138 @@ class GoogleV1Translator(ITranslator):
                     if isinstance(item, list) and item:
                         s = item[0] or ""
                         if isinstance(s, str):
-                            # Trim escaped CRLF y limpiar secuencias de nueva línea
-                            if s.endswith("\\r\\n"):
-                                s = s[:-4]
-                            try:
-                                # Reemplazar secuencias escapadas por saltos de línea reales
-                                s = s.replace("\\n", "\n")
-                                # Normalizar Unicode para acentos y ñ
-                                import unicodedata
-                                s = unicodedata.normalize("NFC", s)
-                            except Exception:
-                                pass
-                            lines.append(s)
+                            s = s.replace("\\n", "\n")
+                            s = re.sub(r'\n{2,}', '\n', s)
+                            s = unicodedata.normalize("NFC", s)
+                            lines.append(s.strip())
                         else:
                             lines.append("")
                     else:
                         lines.append("")
-        # Limpiar espacios antes de saltos de línea (como hace Subtitle Edit)
-        # Preservar saltos de línea; solo quitar espacios antes de \n
-        lines = [re.sub(r" +\n", "\n", ln) for ln in lines]
-
         return lines
 
+    def _post_process_translation(self, original: str, translated: str) -> str:
+        """Post-procesamiento inteligente para mantener estructura"""
+        if not translated or translated.isspace():
+            return original
+
+        # Preservar números al inicio
+        original_match = re.match(r'^(\d+)\s*$', original.strip())
+        if original_match:
+            prefix = original_match.group(1)
+            if not translated.startswith(prefix):
+                return f"{prefix}\n{translated}"
+
+        # Controlar saltos de línea excesivos
+        original_line_count = original.count('\n') + 1
+        translated_line_count = translated.count('\n') + 1
+
+        if translated_line_count > original_line_count + 2:
+            lines = translated.split('\n')
+            if len(lines) > original_line_count + 1:
+                merged_lines = []
+                current_line = ""
+
+                for line in lines:
+                    line = line.strip()
+                    if not line:
+                        continue
+
+                    if not current_line:
+                        current_line = line
+                    elif len(current_line) < 40 or len(line) < 25:
+                        current_line += " " + line
+                    else:
+                        merged_lines.append(current_line)
+                        current_line = line
+
+                if current_line:
+                    merged_lines.append(current_line)
+
+                if 1 <= len(merged_lines) <= original_line_count + 2:
+                    translated = '\n'.join(merged_lines)
+
+        # Limpiar espacios extra
+        translated = re.sub(r' +', ' ', translated)
+        translated = re.sub(r'\n +', '\n', translated)
+
+        return translated.strip()
+
     def translate_lines(self, lines: list[str], src="auto", dst="es", cancel_flag=None) -> list[str]:
-        # Join batch into one request, one payload
-        # Use a delimiter unlikely to occur; choose explicit newline
-        batch = [ln.strip() for ln in lines]
-        joined = "\n".join(batch)
-
-        if cancel_flag and cancel_flag.is_set():
+        """Versión optimizada con procesamiento por lotes"""
+        if not lines:
             return lines
 
-        url = self._build_url(src, dst, joined)
-        try:
-            r = self.session.get(url, timeout=REQ_TIMEOUT)
-            r.raise_for_status()
-            parsed = self._parse_google_v1(r.text)
+        # Separar líneas a traducir de las que no se deben traducir
+        to_translate = []
+        translate_indices = []
+        original_lines = lines.copy()
 
-            # Recombinar todo en un string y dividir por el delimitador original
-            if isinstance(parsed, list):
-                full = "".join(parsed)
-            else:
-                full = str(parsed)
+        for i, line in enumerate(lines):
+            # No traducir: líneas vacías, números, formatos de tiempo
+            if (not line.strip() or
+                    line.strip().isdigit() or
+                    re.search(r'\d{2}:\d{2}:\d{2},\d{3} --> \d{2}:\d{2}:\d{2},\d{3}', line)):
+                continue
 
-            out_lines = full.split("\n")
+            to_translate.append(line)
+            translate_indices.append(i)
 
-            # Ajustar longitud al batch
-            if len(out_lines) < len(batch):
-                out_lines += [""] * (len(batch) - len(out_lines))
-            elif len(out_lines) > len(batch):
-                out_lines = out_lines[:len(batch)]
-
-            return out_lines
-        except Exception:
-            # Fallback seguro
+        # Si no hay nada que traducir, retornar original
+        if not to_translate:
             return lines
 
+        # Procesar en lotes para mayor velocidad
+        batch_size = 20  # Ajusta según necesidad
+        results = []
 
+        for batch_start in range(0, len(to_translate), batch_size):
+            if cancel_flag and cancel_flag.is_set():
+                return lines
+
+            batch_end = min(batch_start + batch_size, len(to_translate))
+            batch = to_translate[batch_start:batch_end]
+
+            print(f"Traduciendo lote {batch_start // batch_size + 1}: {len(batch)} líneas")
+
+            try:
+                # Unir el lote con un delimitador especial
+                delimiter = " ||| "
+                batch_text = delimiter.join(batch)
+
+                url = self._build_url(src, dst, batch_text)
+                r = self.session.get(url, timeout=REQ_TIMEOUT)
+                r.raise_for_status()
+
+                # Parsear respuesta
+                parsed = self._parse_google_v1(r.text)
+                if parsed:
+                    full_text = " ".join(parsed)
+                    # Dividir usando el delimitador
+                    translated_batch = full_text.split(delimiter)
+
+                    # Ajustar longitud si es necesario
+                    if len(translated_batch) < len(batch):
+                        translated_batch += [""] * (len(batch) - len(translated_batch))
+                    elif len(translated_batch) > len(batch):
+                        translated_batch = translated_batch[:len(batch)]
+                else:
+                    translated_batch = batch  # Fallback
+
+                results.extend(translated_batch)
+
+            except Exception as e:
+                print(f"Error en lote {batch_start // batch_size + 1}: {e}")
+                results.extend(batch)  # Usar original en caso de error
+
+        # Reconstruir las líneas finales con post-procesamiento
+        final_lines = original_lines.copy()
+
+        for i, translated_line in zip(translate_indices, results):
+            if i < len(final_lines):
+                final_lines[i] = self._post_process_translation(
+                    original_lines[i],
+                    translated_line
+                )
+
+        return final_lines

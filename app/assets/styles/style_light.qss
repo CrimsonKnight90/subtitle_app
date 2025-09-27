@@ -49,6 +49,10 @@ QLineEdit, QComboBox, QTextEdit, QSpinBox {
     min-height: 28px;
     font-size: 10.5pt;
 }
+QLineEdit:focus, QComboBox:focus, QTextEdit:focus, QSpinBox:focus {
+    border: 1px solid #3d5afe;
+    background: #ffffff;
+}
 
 /* QComboBox refinado */
 QComboBox {
@@ -57,10 +61,6 @@ QComboBox {
 QComboBox:hover {
     border: 1px solid #3d5afe;
     background-color: #f9faff;
-}
-QComboBox:focus {
-    border: 1px solid #005a9e;
-    background-color: #ffffff;
 }
 QComboBox::drop-down {
     subcontrol-origin: padding;
@@ -113,6 +113,7 @@ QPushButton {
     border-radius: 6px;
     padding: 8px 14px;
     border: 1px solid #cfd6e3;
+    transition: all 0.2s ease-in-out;
 }
 QPushButton:hover {
     border: 1px solid #3d5afe;
@@ -121,6 +122,14 @@ QPushButton:hover {
 QPushButton:pressed {
     background: #3d5afe;
     color: #ffffff;
+}
+
+/* 🔹 Botones deshabilitados */
+QPushButton:disabled {
+    background: #e0e4ec;
+    color: #9aa0ad;
+    border: 1px dashed #b0b6c3;
+    opacity: 0.7;
 }
 
 /* ToolBar */

@@ -2,9 +2,9 @@ import threading
 from PySide6.QtCore import QObject, QTimer, QThread, Signal
 from shiboken6 import isValid
 from .translation_worker import TranslationWorker
-from .translation_service import TranslationService
 from app.core import subtitles
-
+from app.core.timefix import compare_and_fix_times
+from pathlib import Path
 
 class TranslationController(QObject):
     # Señales
@@ -75,15 +75,34 @@ class TranslationController(QObject):
 
         file_path = self._queue.pop(0)
 
-        # Cargar preview del archivo en la UI (lado izquierdo)
+        # Cargar preview del archivo en la UI (lado izquierdo) con DEBUG COMPLETO
         try:
+            print(f"[CONTROLLER] === DEBUG CARGA DE ARCHIVO ===")
+            print(f"[CONTROLLER] Cargando archivo: {file_path}")
+
             entries = subtitles.load_srt(file_path)
+
+            print(f"[CONTROLLER] Entradas cargadas: {len(entries)}")
+
+            # DEBUG: Verificar las primeras 3 entradas
+            for i, entry in enumerate(entries[:3]):
+                print(f"[CONTROLLER] Entry {i + 1}:")
+                print(f"[CONTROLLER]   ID: {entry.id}")
+                print(f"[CONTROLLER]   Start: {entry.start}")
+                print(f"[CONTROLLER]   End: {entry.end}")
+                print(f"[CONTROLLER]   Original: '{entry.original}'")
+                print(f"[CONTROLLER]   Num líneas: {entry.original.count(chr(10)) + 1}")
+                print(f"[CONTROLLER]   Contiene \\n: {'SI' if chr(10) in entry.original else 'NO'}")
+
             if entries:
                 self.widget.load_file_preview(entries)
             else:
                 print(f"[CONTROLLER] Archivo vacío o inválido para preview: {file_path}")
+
         except Exception as e:
             print(f"[CONTROLLER] Error cargando preview: {e}")
+            import traceback
+            traceback.print_exc()
 
         # Crear hilo y worker con parámetros correctos
         thread = QThread()
@@ -143,12 +162,39 @@ class TranslationController(QObject):
         # Limpiar vista de preview para el próximo archivo
         self.widget.clear_preview()
         print(f"[CONTROLLER] Archivo terminado: {out_path}")
+
+        try:
+            # 🔹 Buscar el original correspondiente
+            orig_path = self._find_original_for(out_path)
+            if orig_path:
+                # Sobrescribir directamente el archivo traducido con tiempos corregidos
+                compare_and_fix_times(orig_path, out_path, out_path)
+                print(f"[CONTROLLER] Tiempos corregidos en: {out_path}")
+        except Exception as e:
+            print(f"[WARN] No se pudo corregir tiempos: {e}")
+
+        # Emitir señal normal con el archivo corregido
         self.file_finished.emit(out_path)
         self.active -= 1
+
         if not self._queue and self.active == 0:
             self._finish_all()
         else:
             self._start_next()
+
+    def _find_original_for(self, out_path: str) -> str | None:
+        """
+        Dado un archivo traducido, intenta encontrar el original correspondiente.
+        Ejemplo: 'video_es.srt' -> busca 'video.srt'
+        """
+        p = Path(out_path)
+        stem = p.stem
+        if "_" in stem:
+            base = stem.rsplit("_", 1)[0]  # quita sufijo de idioma
+            candidate = p.parent.parent / f"{base}{p.suffix}"
+            if candidate.exists():
+                return str(candidate)
+        return None
 
     def _on_worker_error(self, file_path, error_msg):
         print(f"[CONTROLLER] Error en {file_path}: {error_msg}")

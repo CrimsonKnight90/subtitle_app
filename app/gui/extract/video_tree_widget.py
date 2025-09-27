@@ -121,10 +121,16 @@ class VideoTreeWidget(QTreeWidget):
         header = self.header()
         header.setSectionResizeMode(0, QHeaderView.ResizeToContents)
 
-        # Opcional: que las demás columnas se ajusten o estiren
-        header.setSectionResizeMode(1, QHeaderView.ResizeToContents)
-        header.setSectionResizeMode(2, QHeaderView.ResizeToContents)
-        header.setSectionResizeMode(3, QHeaderView.Stretch)
+        # 🔹 Segunda columna (Idioma) ancho fijo
+        header.setSectionResizeMode(1, QHeaderView.Fixed)
+        header.resizeSection(1, 70)  # ajusta el valor a lo que necesites
+
+        # 🔹 Tercera columna (Codec) ancho fijo
+        header.setSectionResizeMode(2, QHeaderView.Fixed)
+        header.resizeSection(2, 50)
+
+        # 🔹 Cuarta columna (Flags) ancho fijo
+        header.setSectionResizeMode(4, QHeaderView.Stretch)
 
     # ------------------ Drag & Drop ------------------
     def dragEnterEvent(self, event):

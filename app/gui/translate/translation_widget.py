@@ -6,6 +6,7 @@ from PySide6.QtWidgets import (
     QToolBar, QHeaderView
 )
 from PySide6.QtCore import Signal, Qt
+from PySide6.QtGui import QIcon
 from app.services.i18n import get_translator
 import os
 from pathlib import Path
@@ -21,6 +22,7 @@ class TranslationWidget(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.t = get_translator()
+        self.icon_path = Path("app/assets/icons")  # 🔹 define la ruta base de iconos
         self._files = []  # list of dict: {path, fmt, status, engine, src, dst, progress}
         self._setup_ui()
         self._wire()
@@ -34,11 +36,34 @@ class TranslationWidget(QWidget):
         toolbar = QToolBar()
         toolbar.setMovable(False)
 
-        self.cmb_source = QComboBox();
-        self.cmb_source.addItems(["auto", "en", "es", "fr", "de"])
-        self.cmb_target = QComboBox();
-        self.cmb_target.addItems(["es", "en", "fr", "de"])
-        self.cmb_engine = QComboBox();
+        self.cmb_source = QComboBox()
+        self.cmb_target = QComboBox()
+
+        self.langs = {
+            "Auto (detectar)": "auto",
+            "Inglés": "en",
+            "Español": "es",
+            "Francés": "fr",
+            "Alemán": "de",
+            "Coreano": "ko",
+            "Chino (Simplificado)": "zh-CN",
+            "Japonés": "ja",
+            "Tailandés": "th",
+            "Ruso": "ru",
+            "Portugués": "pt",
+            "Italiano": "it",
+            "Turco": "tr"
+        }
+        self.lang_codes = {v: k for k, v in self.langs.items()}
+
+        # Poblar combos con nombres legibles y guardar código en itemData
+        for name, code in self.langs.items():
+            self.cmb_source.addItem(name, code)
+            if code != "auto":  # en destino no tiene sentido "auto"
+                self.cmb_target.addItem(name, code)
+
+        self.cmb_engine = QComboBox()
+
         self.cmb_engine.addItems(["google_v1", "google_free", "mymemory"])
 
         self.lbl_source = QLabel(self.t("source_lang"))
@@ -56,6 +81,26 @@ class TranslationWidget(QWidget):
 
         main.addWidget(toolbar)
 
+        # --- Mensaje de ayuda arriba a la izquierda ---
+        info_widget = QWidget()
+        info_row = QHBoxLayout(info_widget)
+        info_row.setContentsMargins(0, 0, 0, 0)
+        info_row.setAlignment(Qt.AlignLeft | Qt.AlignTop)
+
+        self.info_icon_label = QLabel()
+        icon_path = self.icon_path / "idea.svg"
+        if icon_path.exists():
+            self.info_icon_label.setPixmap(QIcon(str(icon_path)).pixmap(20, 20))
+        self.info_icon_label.setFixedSize(20, 20)
+
+        self.info_text_label = QLabel(self.t("videos_drag_hint"))
+
+        info_row.addWidget(self.info_icon_label)
+        info_row.addWidget(self.info_text_label)
+
+        # 🔹 Insertamos el widget de ayuda justo después del toolbar
+        main.addWidget(info_widget, alignment=Qt.AlignLeft)
+
         # --- Tabla de archivos ---
         self.table = QTableWidget(0, 6)
         self.table.setHorizontalHeaderLabels([self.t("index"), self.t("title"), self.t("format"), self.t("source_lang"), self.t("target_lang"), self.t("progress")])
@@ -63,6 +108,7 @@ class TranslationWidget(QWidget):
         self.table.setSelectionMode(QAbstractItemView.ExtendedSelection)
         self.table.setAcceptDrops(True)
         self.table.dragEnterEvent = self._drag_enter
+        self.table.dragMoveEvent = self.dragMoveEvent
         self.table.dropEvent = self._drop
         self.table.setContextMenuPolicy(Qt.CustomContextMenu)
         self.table.customContextMenuRequested.connect(self._context_menu)
@@ -79,7 +125,7 @@ class TranslationWidget(QWidget):
         hdr.setSectionResizeMode(2, QHeaderView.Fixed)  # Formato fijo
         hdr.resizeSection(2, 60)
         hdr.setSectionResizeMode(3, QHeaderView.Fixed)  # Origen fijo (idioma)
-        hdr.resizeSection(3, 90)
+        hdr.resizeSection(3, 100)
         hdr.setSectionResizeMode(4, QHeaderView.Stretch)  # Destino expande
         hdr.setSectionResizeMode(5, QHeaderView.Fixed)  # % fijo
         hdr.resizeSection(5, 20)  # ancho razonable
@@ -154,13 +200,23 @@ class TranslationWidget(QWidget):
     def _drag_enter(self, e):
         if e.mimeData().hasUrls():
             e.acceptProposedAction()
+        else:
+            e.ignore()
 
     def _drop(self, e):
         paths = []
         for url in e.mimeData().urls():
-            p = url.toLocalFile()
-            if p and p.lower().endswith((".srt", ".vtt")):
-                paths.append(p)
+            p = Path(url.toLocalFile())
+            if not p.exists():
+                continue
+            if p.is_file() and p.suffix.lower() in (".srt", ".vtt"):
+                paths.append(str(p))
+            elif p.is_dir():
+                # 🔹 Buscar recursivamente subtítulos dentro de la carpeta
+                for sub in p.rglob("*"):
+                    if sub.suffix.lower() in (".srt", ".vtt"):
+                        paths.append(str(sub))
+
         if paths:
             self._add_files(paths)
 
@@ -175,8 +231,16 @@ class TranslationWidget(QWidget):
             if any(row["path"] == p for row in self._files):
                 continue
             fmt = os.path.splitext(p)[1].lower().lstrip(".")
-            row = {"path": p, "fmt": fmt, "status": "No", "engine": self.cmb_engine.currentText(),
-                   "src": self.cmb_source.currentText(), "dst": self.cmb_target.currentText(), "progress": 0}
+            row = {
+                "path": p,
+                "fmt": fmt,
+                "status": "No",
+                "engine": self.cmb_engine.currentText(),
+                "src": self.cmb_source.currentData(),  # código ISO real
+                "dst": self.cmb_target.currentData(),  # código ISO real
+                "progress": 0
+            }
+
             self._files.append(row)
         self._refresh_table()
 
@@ -195,7 +259,10 @@ class TranslationWidget(QWidget):
             # 3: Origen (idioma detectado del archivo)
             detected = row.get("detected") or self._detect_language(row["path"])
             row["detected"] = detected
-            self.table.setItem(r, 3, QTableWidgetItem(detected))
+
+            # Mostrar nombre legible si existe en self.lang_codes
+            display_name = self.lang_codes.get(detected, detected)
+            self.table.setItem(r, 3, QTableWidgetItem(display_name))
 
             # 4: Destino (nombre final esperado)
             p = Path(row["path"])
@@ -214,7 +281,7 @@ class TranslationWidget(QWidget):
         hdr.setSectionResizeMode(2, QHeaderView.Fixed);
         hdr.resizeSection(2, 60)  # Formato
         hdr.setSectionResizeMode(3, QHeaderView.Fixed);
-        hdr.resizeSection(3, 90)  # Origen
+        hdr.resizeSection(3, 100)  # Origen
         hdr.setSectionResizeMode(4, QHeaderView.Stretch)  # Destino
         hdr.setSectionResizeMode(5, QHeaderView.Fixed);
         hdr.resizeSection(5, 20)  # %
@@ -279,9 +346,9 @@ class TranslationWidget(QWidget):
         if not paths:
             return
         # fijar motor y lenguajes actuales para la corrida
-        src = self.cmb_source.currentText()
-        dst = self.cmb_target.currentText()
-        engine = self.cmb_engine.currentText()  # valores ya son 'google_free' o 'mymemory'
+        src = self.cmb_source.currentData()
+        dst = self.cmb_target.currentData()
+        engine = self.cmb_engine.currentText()
 
         # bloquear UI sensible
         self.btn_cancel.setEnabled(True)  # 🔹 habilitar
@@ -417,18 +484,34 @@ class TranslationWidget(QWidget):
         self.lbl_status.setText(self.t("ready_to_start"))
 
     def load_file_preview(self, entries):
-        """Carga líneas originales a la izquierda y limpia la derecha."""
+        """Carga líneas originales preservando estructura multi-línea."""
         count = len(entries)
         self.table_original.setRowCount(count)
         self.table_translated.setRowCount(count)
 
-        for i, e in enumerate(entries):
+        print(f"[WIDGET] Cargando preview: {count} entradas")
+
+        for i, entry in enumerate(entries):
+            # CRÍTICO: No alterar la estructura del texto original
+            # Mostrar el texto completo tal como está, incluyendo saltos de línea
+            original_text = entry.original
+
+            # Para visualización en la tabla, reemplazar \n con espacio para que sea legible
+            # pero NO alterar el contenido real
+            display_text = original_text.replace('\n', ' | ')  # Usar separador visual
+
             self.table_original.setItem(i, 0, QTableWidgetItem(str(i + 1)))
-            self.table_original.setItem(i, 1, QTableWidgetItem(e.original))
+            self.table_original.setItem(i, 1, QTableWidgetItem(display_text))
+
             self.table_translated.setItem(i, 0, QTableWidgetItem(str(i + 1)))
             self.table_translated.setItem(i, 1, QTableWidgetItem(""))
 
-        # 👇 En vez de resizeColumnsToContents, reaplicamos los modos
+            # Debug para primeras 3 entradas
+            if i < 3:
+                print(f"[WIDGET] Preview {i + 1}: '{original_text[:50]}...'")
+                print(f"[WIDGET] Líneas en texto: {original_text.count(chr(10)) + 1}")
+
+        # Reaplizar modos de header sin alterar contenido
         header_orig = self.table_original.horizontalHeader()
         header_orig.setSectionResizeMode(0, QHeaderView.Fixed)
         header_orig.resizeSection(0, 40)
@@ -445,9 +528,18 @@ class TranslationWidget(QWidget):
         self.table_translated.setRowCount(0)
 
     def on_line_translated(self, index, original, translated):
-        """Actualiza en tiempo real la columna de traducción."""
+        """Actualiza en tiempo real la columna de traducción preservando estructura."""
         try:
-            self.table_translated.setItem(index, 1, QTableWidgetItem(translated))
+            # Para mostrar en la tabla, convertir saltos de línea a separador visual
+            display_translated = translated.replace('\n', ' | ')
+
+            self.table_translated.setItem(index, 1, QTableWidgetItem(display_translated))
+
+            # Debug para primeras 3
+            if index < 3:
+                print(f"[WIDGET] Traducción {index}: '{translated[:50]}...'")
+                print(f"[WIDGET] Líneas en traducción: {translated.count(chr(10)) + 1}")
+
         except Exception as e:
             print(f"[WIDGET] Error actualizando línea {index}: {e}")
 

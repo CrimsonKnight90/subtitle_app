@@ -71,6 +71,14 @@ TRANSLATIONS = {
     "file_completed": "Completado: {filename}",
     "translation_summary": "Resumen de traducción",
 
+    # FFmpeg
+    "ffmpeg_not_found_title": "FFmpeg no encontrado",
+    "ffmpeg_not_found_message": (
+    "FFmpeg es necesario para la extracción de audio/video.\n\n"
+    "Descárgalo desde la página oficial y colócalo en:\n"
+    "app/vendors/ffmpeg/\n\n"
+    "¿Deseas abrir la página oficial de descarga?"),
+
 
     # Cabeceras de tabla
     "header_element": "Elemento",
@@ -212,6 +220,13 @@ TRANSLATIONS = {
     "file_completed": "Completed: {filename}",
     "translation_summary": "Translation summary",
 
+    # FFmpeg
+    "ffmpeg_not_found_title": "FFmpeg not found",
+    "ffmpeg_not_found_message": (
+    "FFmpeg is required for audio/video extraction.\n\n"
+    "Download it from the official page and place it in:\n"
+    "app/vendors/ffmpeg/\n\n"
+    "Do you want to open the official download page?"),
 
     # Table headers
     "header_element": "Element",
@@ -353,6 +368,13 @@ TRANSLATIONS = {
     "file_completed": "Terminé : {filename}",
     "translation_summary": "Résumé de la traduction",
 
+    # FFmpeg
+    "ffmpeg_not_found_title": "FFmpeg introuvable",
+    "ffmpeg_not_found_message": (
+    "FFmpeg est nécessaire pour l'extraction audio/vidéo.\n\n"
+    "Téléchargez-le depuis la page officielle et placez-le dans :\n"
+    "app/vendors/ffmpeg/\n\n"
+    "Voulez-vous ouvrir la page officielle de téléchargement ?"),
 
     # En-têtes de tableau
     "header_element": "Élément",

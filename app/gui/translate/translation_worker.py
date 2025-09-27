@@ -5,9 +5,7 @@ from app.core import subtitles
 from app.core.postprocess import postprocesar
 from pathlib import Path
 import time
-
-
-
+from app.core.subtitles import sync_entries_from_original
 class TranslationWorker(QObject):
     progress = Signal(int)  # 0..100 por archivo
     finished = Signal(str)  # ruta de salida
@@ -39,6 +37,17 @@ class TranslationWorker(QObject):
             if not entries:
                 self.error.emit("Archivo de subtítulos vacío o inválido")
                 return
+
+            # === DEBUG WORKER ENTRADA ===
+            print(f"[WORKER] === DEBUG ENTRADA WORKER ===")
+            print(f"[WORKER] Archivo: {self.file_path}")
+            print(f"[WORKER] Entradas cargadas: {len(entries)}")
+
+            for i, entry in enumerate(entries[:3]):
+                print(f"[WORKER] Entry {i + 1}:")
+                print(f"[WORKER]   Original: '{entry.original}'")
+                print(f"[WORKER]   Líneas: {entry.original.count(chr(10)) + 1}")
+                print(f"[WORKER]   Bytes: {len(entry.original.encode('utf-8'))}")
 
             # Extraer textos originales MANTENIENDO EL ORDEN 1:1
             texts = [e.original for e in entries]
@@ -184,6 +193,11 @@ class TranslationWorker(QObject):
                 processed_translation = postprocesar(translation)
                 entry.translated = processed_translation
 
+                # 🔹 Asegurar que los tiempos se preservan del original
+                if hasattr(entry, "start") and hasattr(entry, "end"):
+                    entry.start = entry.start
+                    entry.end = entry.end
+
                 # Log de asignación final
                 print(f"[WORKER] Final {i}: '{entry.original[:30]}...' -> '{processed_translation[:30]}...'")
 
@@ -192,6 +206,14 @@ class TranslationWorker(QObject):
                     print(f"[WARN] Traducción vacía para entrada {i}, usando original")
                     entry.translated = entry.original
 
+            # SINCRONIZAR CON EL ARCHIVO ORIGINAL ANTES DE GUARDAR
+            try:
+                synchronized_entries = sync_entries_from_original(self.file_path, entries)
+                entries = synchronized_entries
+                print(f"[WORKER] Entradas sincronizadas con archivo original")
+            except Exception as e:
+                print(f"[WORKER] No se pudo sincronizar, guardando como está: {e}")
+
             # Guardar archivo
             out_path = self._build_output_path(self.file_path)
             subtitles.save_srt(entries, out_path)
@@ -199,6 +221,7 @@ class TranslationWorker(QObject):
             print(f"[WORKER] Traducción completada: {out_path}")
             self.finished.emit(out_path)
             self.progress.emit(100)
+
 
         except Exception as e:
             print(f"[WORKER] Error crítico: {e}")
@@ -223,5 +246,5 @@ class TranslationWorker(QObject):
         # Nombre base traducido
         translated_name = f"{p.stem}_{self.tgt_lang}{p.suffix}"
         out_path = out_dir / translated_name
-
+        print(f"[WORKER] Hilo terminado: {self.file_path}")
         return str(out_path)
