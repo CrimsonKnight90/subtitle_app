@@ -1,13 +1,24 @@
-/app/vendors/
-/ffmpeg/
-*.zip
-*.exe
-venv/
-.venv/
+# Python
 __pycache__/
 *.pyc
-.idea/
+*.pyo
+*.pyd
 *.log
+
+# Entornos virtuales
+venv/
+.env
+
+# Archivos de sistema
+.DS_Store
+Thumbs.db
+
+# Binarios externos
+app/vendors/ffmpeg/
+*.zip
+*.exe
+
+.idea/
 *.tmp
 *.srt
 *.bat
