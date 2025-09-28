@@ -36,6 +36,7 @@ dist/
 *.tmp
 *.srt
 
+
 # --- Archivos de pruebas locales (no necesarios en repo) ---
 /log.py
 /1.py
@@ -43,3 +44,4 @@ dist/
 *.bat
 app/assets/icons/arrow_down.svg
 log.txt
+logs/
