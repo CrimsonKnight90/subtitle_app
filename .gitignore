@@ -1,20 +1,16 @@
-# Python
+# --- Python ---
 __pycache__/
-*.pyc
-*.pyo
-*.pyd
-*.log
 *.py[cod]
 *.so
 *.egg-info/
 *.egg
 
-# Entornos virtuales
+# --- Entornos virtuales ---
 venv/
 .env/
 .venv/
 
-# Archivos de sistema
+# --- Archivos de sistema ---
 .DS_Store
 Thumbs.db
 
@@ -22,10 +18,8 @@ Thumbs.db
 .vscode/
 .idea/
 
-# Binarios externos
+# --- Binarios externos ---
 app/vendors/ffmpeg/
-*.zip
-*.exe
 
 # --- Tests / Coverage ---
 .coverage
@@ -36,12 +30,13 @@ htmlcov/
 build/
 dist/
 *.spec
-log.txt
+
+# --- Logs / temporales ---
+*.log
 *.tmp
 *.srt
-*.bat
+
+# --- Archivos de pruebas locales (no necesarios en repo) ---
 /log.py
 /1.py
 /estructura.txt
-/requirements.py
-/app/assets/icons/arrow_down.svg
