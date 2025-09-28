@@ -36,7 +36,7 @@ htmlcov/
 build/
 dist/
 *.spec
-
+log.txt
 *.tmp
 *.srt
 *.bat

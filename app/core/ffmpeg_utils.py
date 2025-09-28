@@ -1,8 +1,7 @@
-# app\core\ffmpeg_utils.py
 # 📄 Archivo: app/core/ffmpeg_utils.py
 
 from pathlib import Path
-import subprocess, json
+import subprocess, sys, json
 from typing import List, Optional
 from app.services.settings import get_settings
 from app.services.logging_config import get_logger
@@ -24,7 +23,9 @@ def check_binaries() -> None:
     S = get_settings()
     for exe in (S.ffmpeg_exe, S.ffprobe_exe):
         if not exe.exists():
-            raise FileNotFoundError(f"No se encontró {exe}. Asegúrate de incluir /ffmpeg en la carpeta de instalación.")
+            raise FileNotFoundError(
+                f"No se encontró {exe}. Asegúrate de incluir /ffmpeg en la carpeta de instalación."
+            )
 
 # ------------------ Obtener pistas de subtítulos con ffprobe ------------------
 def ffprobe_subs(video: Path) -> List[SubTrack]:
@@ -43,13 +44,13 @@ def ffprobe_subs(video: Path) -> List[SubTrack]:
     ]
     log.info(f"ffprobe: {' '.join(cmd)}")
 
-    # 🔹 Forzar UTF-8 y reemplazar caracteres inválidos para evitar UnicodeDecodeError
     res = subprocess.run(
         cmd,
         capture_output=True,
         text=True,
         encoding="utf-8",
-        errors="replace"
+        errors="replace",
+        creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
     )
 
     if res.returncode != 0:
@@ -114,7 +115,8 @@ def extract_subtitle_stream(video: Path, track_index: int, out_srt: Path) -> boo
         capture_output=True,
         text=True,
         encoding="utf-8",
-        errors="replace"
+        errors="replace",
+        creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
     )
     if proc.returncode != 0:
         log.error(f"ffmpeg error: {proc.stderr.strip()}")

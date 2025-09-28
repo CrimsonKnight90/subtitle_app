@@ -10,6 +10,7 @@ from app.gui.translate.translation_widget import TranslationWidget
 from app.gui.translate.translation_controller import TranslationController
 from app.services.style_manager import set_theme
 import atexit
+from app.services.style_manager import resource_path
 class MainWindow(QMainWindow):
     language_changed = Signal()
 
@@ -21,7 +22,7 @@ class MainWindow(QMainWindow):
 
         self.t = get_translator()
         self.setWindowTitle(self.t("app_title"))
-        self.setWindowIcon(QIcon(str(self.icon_path / "app.svg")))
+        self.setWindowIcon(QIcon(resource_path("app/assets/icons/app.svg")))
         self.resize(1000, 700)
 
         # Contenedor central
@@ -144,8 +145,8 @@ class MainWindow(QMainWindow):
     def _update_theme_icon(self, theme: str):
         # Usa tus SVG: sol para light, luna para dark
         icon_name = "sun.svg" if theme == "light" else "moon.svg"
-        icon_path = self.icon_path / icon_name
-        self.act_theme_toggle.setIcon(QIcon(str(icon_path)))
+        icon_path = resource_path(f"app/assets/icons/{icon_name}")
+        self.act_theme_toggle.setIcon(QIcon(icon_path))
         # Texto accesible
         self.act_theme_toggle.setText("Claro" if theme == "light" else "Oscuro")
 
