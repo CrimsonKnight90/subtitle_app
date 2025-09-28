@@ -106,7 +106,7 @@ Puedes descargar la última versión ejecutable de **SubtitlesUp** aquí:
 > - `SubtitlesUp.exe` → el ejecutable principal  
 > - `_internal/` → carpeta con librerías necesarias  
 >
-> Solo necesitas descomprimir con [7-zip]() y hacer doble clic en `SubtitlesUp.exe`.
+> Solo necesitas descomprimir con [7-zip](https://www.7-zip.org/download.html) y hacer doble clic en `SubtitlesUp.exe`.
 
 ---
 
