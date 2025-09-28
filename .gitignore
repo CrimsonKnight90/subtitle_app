@@ -4,21 +4,39 @@ __pycache__/
 *.pyo
 *.pyd
 *.log
+*.py[cod]
+*.so
+*.egg-info/
+*.egg
 
 # Entornos virtuales
 venv/
-.env
+.env/
+.venv/
 
 # Archivos de sistema
 .DS_Store
 Thumbs.db
+
+# --- IDEs ---
+.vscode/
+.idea/
 
 # Binarios externos
 app/vendors/ffmpeg/
 *.zip
 *.exe
 
-.idea/
+# --- Tests / Coverage ---
+.coverage
+htmlcov/
+.pytest_cache/
+
+# --- Build / Distribución ---
+build/
+dist/
+*.spec
+
 *.tmp
 *.srt
 *.bat

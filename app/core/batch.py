@@ -3,7 +3,7 @@
 
 from pathlib import Path
 from typing import Callable, Iterable, Tuple, Optional
-from app.core.ffmpeg_utils import ffprobe_subs, choose_track, extract_subtitle_stream, BITMAP_CODECS
+from app.core.ffmpeg_utils import ffprobe_subs, extract_subtitle_stream, BITMAP_CODECS
 from app.services.settings import get_settings
 from app.services.logging_config import get_logger
 

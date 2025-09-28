@@ -1,0 +1,90 @@
+Estructura del proyecto en: C:\Estudio\subtitle_app
+
+📄 .env.example
+📄 .gitignore
+📄 1.py
+📄 LICENSE
+📄 README.md
+📂 app/
+    📄 __init__.py
+    📂 assets/
+        📂 icons/
+            📄 add.svg
+            📄 add_srt.svg
+            📄 app-b.svg
+            📄 app.svg
+            📄 arrow_down.svg
+            📄 cancel.svg
+            📄 exe.ico
+            📄 exe.svg
+            📄 extract.svg
+            📄 folder-custom.svg
+            📄 folder-subdir.svg
+            📄 folder-subtitles.svg
+            📄 folder-video.svg
+            📄 folder.svg
+            📄 idea.svg
+            📄 moon.svg
+            📄 settings.svg
+            📄 start.svg
+            📄 stop.svg
+            📄 sun.svg
+        📂 styles/
+            📄 de qss a txt.bat
+            📄 de txt a qss.bat
+            📄 style_dark.qss
+            📄 style_light.qss
+    📂 core/
+        📄 __init__.py
+        📄 batch.py
+        📄 correcciones.py
+        📄 de py a txt.bat
+        📄 de txt a py.bat
+        📄 ffmpeg_utils.py
+        📄 postprocess.py
+        📄 subtitles.py
+        📄 timefix.py
+        📄 translators.py
+    📂 gui/
+        📄 __init__.py
+        📄 de py a txt.bat
+        📄 de txt a py.bat
+        📂 extract/
+            📄 de py a txt.bat
+            📄 de txt a py.bat
+            📄 extract_widget.py
+            📂 extract_widget_utils/
+                📄 extract_widget_ffmpeg_utils.py
+            📄 video_tree_widget.py
+            📄 workers.py
+        📄 main_window.py
+        📂 translate/
+            📄 de py a txt.bat
+            📄 de txt a py.bat
+            📄 translation_controller.py
+            📄 translation_service.py
+            📄 translation_widget.py
+            📄 translation_worker.py
+    📂 services/
+        📄 __init__.py
+        📄 config.py
+        📄 de py a txt.bat
+        📄 de txt a py.bat
+        📄 i18n.py
+        📄 logging_config.py
+        📄 settings.py
+        📄 style_manager.py
+        📄 translations.py
+    📂 vendors/
+        📂 ffmpeg/
+            📄 ffmpeg.exe
+            📄 ffplay.exe
+            📄 ffprobe.exe
+📄 config.json
+📄 de py a txt.bat
+📄 de txt a py.bat
+📄 estructura.txt
+📄 estructura_proyecto.txt
+📄 log.txt
+📄 main.py
+📄 requirements.txt
