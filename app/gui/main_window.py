@@ -159,7 +159,7 @@ class MainWindow(QMainWindow):
     def _mostrar_manual(self):
         """Abre el manual en GitHub en el navegador por defecto."""
         QDesktopServices.openUrl(
-            QUrl("https://github.com/CrimsonKnight90/subtitle_app?tab=readme-ov-file")
+            QUrl("https://github.com/CrimsonKnight90/subtitle_app/blob/main/MANUAL.md")
         )
 
     def _cambiar_idioma(self, lang_code):

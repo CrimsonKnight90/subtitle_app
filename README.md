@@ -5,13 +5,21 @@ Permite trabajar con múltiples motores de traducción (Google, MyMemory, LibreT
 
 ---
 
+### 💖 Dedicado a mi tía Leyda
+
+**SubtitlesUp** fue creado con mucho cariño para mi tía **Leyda Josefina Jaen Sánchez**, quien disfruta profundamente de las series, doramas y películas.  
+Su pasión por el contenido internacional me inspiró a desarrollar esta herramienta, con el objetivo de facilitarle la traducción de subtítulos y permitirle disfrutar plenamente de sus historias favoritas sin barreras de idioma.  
+Esta aplicación es, ante todo, un regalo para ella y para todos los que comparten ese amor por el cine y la televisión.
+
+---
+
 ## 📑 Índice
 - [🚀 Características principales](#-características-principales)
 - [🌍 Idiomas soportados](#-idiomas-soportados)
 - [📦 Requisitos](#-requisitos)
 - [⚙️ Instalación](#️-instalación)
-  - [Desde código Python](#desde-código-python)
-  - [Desde ejecutable (.exe)](#desde-ejecutable-exe)
+  - [Desde código Python](#-desde-código-python)
+  - [📥Desde ejecutable (.exe)](#-desde-ejecutable-exe)Desde ejecutable (.exe)
 - [🎥 FFmpeg](#-ffmpeg)
 - [▶️ Uso](#️-uso)
 - [🛠️ Desarrollo](#️-desarrollo)
@@ -56,9 +64,12 @@ Actualmente puedes traducir subtítulos a/desde:
 - **Python 3.10+** (solo si ejecutas desde código).
 - Dependencias listadas en `requirements.txt`:
   ```bash
-  pip install -r requirements.txt
-⚙️ Instalación
-Desde código Python
+  pip install -r requirements.txt.
+
+---
+
+## ⚙️ Instalación
+### Desde código Python
 Clona el repositorio:
 
 bash
@@ -68,9 +79,12 @@ Crea un entorno virtual (recomendado):
 
 bash
 python -m venv venv
-# Linux/Mac
+
+---
+
+### Linux/Mac
 source venv/bin/activate
-# Windows
+### Windows
 venv\Scripts\activate
 Instala dependencias:
 
@@ -80,15 +94,26 @@ Ejecuta la aplicación:
 
 bash
 python main.py
-Desde ejecutable (.exe)
-Descarga la última versión desde la sección Releases en GitHub.
 
-Haz doble clic en SubtitlesUp.exe para abrir la aplicación.
+## 📥 Desde ejecutable (.exe)
+### Descarga
 
-No requiere instalación adicional.
+Puedes descargar la última versión ejecutable de **SubtitlesUp** aquí:
 
-🎥 FFmpeg
-La aplicación requiere FFmpeg para la extracción de subtítulos de vídeos. Debes descargarlo manualmente desde la página oficial: Descargar FFmpeg
+👉 [Descargar última versión](https://github.com/CrimsonKnight90/subtitle_app/releases/latest)
+
+> El archivo `SubtitlesUp-vx.x.x.zip` contiene:
+> - `SubtitlesUp.exe` → el ejecutable principal  
+> - `_internal/` → carpeta con librerías necesarias  
+>
+> Solo necesitas descomprimir con [7-zip]() y hacer doble clic en `SubtitlesUp.exe`.
+
+---
+
+## 🎥 FFmpeg
+La aplicación requiere FFmpeg para la extracción de subtítulos de vídeos. Debes descargarlo manualmente desde la página oficial:
+
+👉 [Descargar FFmpeg](https://ffmpeg.org/download.html)
 
 Una vez descargado, coloca los binarios en la siguiente carpeta de tu proyecto:
 
@@ -102,26 +127,28 @@ app/vendors/ffmpeg/ffplay.exe
 app/vendors/ffmpeg/ffprobe.exe
 ⚠️ Nota: estos binarios están excluidos del repositorio mediante .gitignore.
 
-▶️ Uso
-Abre la aplicación.
+---
 
-Carga un archivo .srt o .vtt.
+## ▶️ Uso
+- Abre la aplicación.
 
-Selecciona el idioma de destino.
+- Carga un archivo .srt o .vtt.
 
-Haz clic en Traducir.
+- Selecciona el idioma de destino.
 
-Guarda el archivo traducido.
+- Haz clic en Traducir.
 
-Para extracción:
+- Guarda el archivo traducido.
 
-Carga un archivo .mp4 o .mkv.
+- Para extracción:
 
-Selecciona Extraer subtítulos.
+- Carga un archivo .mp4 o .mkv.
 
-Obtendrás un .srt que luego puedes traducir.
+- Selecciona Extraer subtítulos.
 
-🛠️ Desarrollo
+- Obtendrás un .srt que luego puedes traducir.
+
+## 🛠️ Desarrollo
 Código organizado y modular.
 
 Traducciones centralizadas en app/services/translations.py.
@@ -132,10 +159,10 @@ Uso de loguru para logging avanzado.
 
 Dependencias externas gestionadas en requirements.txt.
 
-❗ Problemas comunes
+## ❗ Problemas comunes
 No se encuentra FFmpeg → Instala FFmpeg y agrega la carpeta bin al PATH "app\vendors".
 
 La traducción falla → Verifica tu conexión a internet. Ten en cuenta que los motores google_free y mymemory son más lentos que google_v1.
 
-📜 Licencia
+## 📜 Licencia
 Este proyecto se distribuye bajo la licencia MIT. Consulta el archivo LICENSE para más detalles.
