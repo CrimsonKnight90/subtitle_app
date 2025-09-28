@@ -18,7 +18,7 @@ Esta aplicación es, ante todo, un regalo para ella y para todos los que compart
 - [🌍 Idiomas soportados](#-idiomas-soportados)
 - [📦 Requisitos](#-requisitos)
 - [⚙️ Instalación](#️-instalación)
-  - [Desde código Python](#-desde-código-python)
+  - [🐍 Desde código Python](#-python)
   - [📥Desde ejecutable (.exe)](#-desde-ejecutable-exe)Desde ejecutable (.exe)
 - [🎥 FFmpeg](#-ffmpeg)
 - [▶️ Uso](#️-uso)
@@ -69,7 +69,7 @@ Actualmente puedes traducir subtítulos a/desde:
 ---
 
 ## ⚙️ Instalación
-### Desde código Python
+### 🐍 Python
 Clona el repositorio:
 
 bash
@@ -82,9 +82,9 @@ python -m venv venv
 
 ---
 
-### Linux/Mac
+### 🐧 Linux /🍎 Mac
 source venv/bin/activate
-### Windows
+### 💻 Windows
 venv\Scripts\activate
 Instala dependencias:
 
@@ -165,4 +165,4 @@ No se encuentra FFmpeg → Instala FFmpeg y agrega la carpeta bin al PATH "app\v
 La traducción falla → Verifica tu conexión a internet. Ten en cuenta que los motores google_free y mymemory son más lentos que google_v1.
 
 ## 📜 Licencia
-Este proyecto se distribuye bajo la licencia MIT. Consulta el archivo LICENSE para más detalles.
+Este proyecto se distribuye bajo la licencia MIT. Consulta el archivo [LICENSE](https://github.com/CrimsonKnight90/subtitle_app/blob/main/LICENSE) para más detalles.
