@@ -40,3 +40,6 @@ dist/
 /log.py
 /1.py
 /estructura.txt
+*.bat
+app/assets/icons/arrow_down.svg
+log.txt

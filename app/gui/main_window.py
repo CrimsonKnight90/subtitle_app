@@ -9,6 +9,8 @@ from app.services.i18n import get_translator
 from app.gui.translate.translation_widget import TranslationWidget
 from app.gui.translate.translation_controller import TranslationController
 from app.services.style_manager import set_theme
+from PySide6.QtGui import QDesktopServices
+from PySide6.QtCore import QUrl
 import atexit
 from app.services.style_manager import resource_path
 class MainWindow(QMainWindow):
@@ -155,10 +157,9 @@ class MainWindow(QMainWindow):
         return QApplication.instance()
 
     def _mostrar_manual(self):
-        QMessageBox.information(
-            self,
-            self.t("manual_title"),
-            self.t("manual_message")
+        """Abre el manual en GitHub en el navegador por defecto."""
+        QDesktopServices.openUrl(
+            QUrl("https://github.com/CrimsonKnight90/subtitle_app?tab=readme-ov-file")
         )
 
     def _cambiar_idioma(self, lang_code):
