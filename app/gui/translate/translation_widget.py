@@ -178,10 +178,10 @@ class TranslationWidget(QWidget):
 
         # --- Botones ---
         btns = QHBoxLayout()
-        self.btn_add = QPushButton(self.t("add_subtitles"))
-        self.btn_translate = QPushButton(self.t("start"));
+        self.btn_add = QPushButton(QIcon(str(self.icon_path / "addsrt.svg")),self.t("add_subtitles"))
+        self.btn_translate = QPushButton(QIcon(str(self.icon_path / "iniciar.svg")),self.t("start"));
         self.btn_translate.setObjectName("PrimaryButton")
-        self.btn_cancel = QPushButton(self.t("cancel"));
+        self.btn_cancel = QPushButton(QIcon(str(self.icon_path / "cancel-t.svg")),self.t("cancel"));
         self.btn_cancel.setObjectName("DangerButton")
         self.btn_cancel.setEnabled(False)
 
